@@ -1,20 +1,25 @@
 // src/pages/InstructionPage.tsx
 import { useRef, useState } from 'react';
+import turtleTopView from '../assets/turtle-top-view.gif';
+import turtleLeftSide from '../assets/turtle-left-side.jpg';
+import turtleRightSide from '../assets/turtle-right-side.jpg';
 
 interface InstructionPageProps {
   onBack: () => void;
+  onIdentify: () => void;
 }
 
 interface PhotoCardProps {
   label: string;
   tip: string;
+  illustration: string;
   required?: boolean;
   large?: boolean;
   image: File | null;
   onImageSelect: (file: File) => void;
 }
 
-function PhotoCard({ label, tip, required, large, image, onImageSelect }: PhotoCardProps) {
+function PhotoCard({ label, tip, illustration, required, large, image, onImageSelect }: PhotoCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [hovered, setHovered] = useState(false);
   const previewUrl = image ? URL.createObjectURL(image) : null;
@@ -95,26 +100,21 @@ function PhotoCard({ label, tip, required, large, image, onImageSelect }: PhotoC
             </div>
           </>
         ) : (
-          <span
-            className="text-xs uppercase text-center px-4"
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#3a5c40',
-              letterSpacing: '0.2em',
-            }}
-          >
-            Illustration placeholder
-          </span>
+          <img
+            src={illustration}
+            alt={`${label} illustration`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         )}
       </div>
 
       {/* Tip */}
       <p
-        className="text-xs"
+        className="text-sm"
         style={{
           fontFamily: "'DM Mono', monospace",
-          color: '#6b8f71',
-          letterSpacing: '0.15em',
+          color: '#a8c5ae',
+          letterSpacing: '0.1em',
         }}
       >
         {tip}
@@ -136,10 +136,10 @@ function PhotoCard({ label, tip, required, large, image, onImageSelect }: PhotoC
       {/* Submit button */}
       <button
         type="button"
-        className="w-full py-3 text-xs uppercase border transition-all duration-300"
+        className="w-full py-4 text-sm uppercase border transition-all duration-300"
         style={{
           fontFamily: "'DM Mono', monospace",
-          letterSpacing: '0.25em',
+          letterSpacing: '0.2em',
           color: hovered ? '#0a1a0e' : '#6b8f71',
           borderColor: '#6b8f71',
           backgroundColor: hovered ? '#6b8f71' : 'transparent',
@@ -154,7 +154,7 @@ function PhotoCard({ label, tip, required, large, image, onImageSelect }: PhotoC
   );
 }
 
-export function InstructionPage({ onBack }: InstructionPageProps) {
+export function InstructionPage({ onBack, onIdentify }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
@@ -196,6 +196,7 @@ export function InstructionPage({ onBack }: InstructionPageProps) {
       <PhotoCard
         label="Top View"
         tip="Position yourself directly above the turtle"
+        illustration={turtleTopView}
         required
         large
         image={topImage}
@@ -204,12 +205,14 @@ export function InstructionPage({ onBack }: InstructionPageProps) {
       <PhotoCard
         label="Left Side"
         tip="Optional — helps improve accuracy"
+        illustration={turtleLeftSide}
         image={leftImage}
         onImageSelect={setLeftImage}
       />
       <PhotoCard
         label="Right Side"
         tip="Optional — helps improve accuracy"
+        illustration={turtleRightSide}
         image={rightImage}
         onImageSelect={setRightImage}
       />
@@ -233,8 +236,7 @@ export function InstructionPage({ onBack }: InstructionPageProps) {
         onMouseLeave={() => setIdentifyHovered(false)}
         onClick={() => {
           if (!identifyEnabled) return;
-          // TODO: wire up identification logic
-          console.log('Identify with:', { topImage, leftImage, rightImage });
+          onIdentify();
         }}
       >
         Identify My Turtle
