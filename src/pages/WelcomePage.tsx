@@ -1,9 +1,12 @@
-// src/pages/WelcomePage.tsx
+import { useState } from 'react';
+
 export function WelcomePage() {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <div
-      className="flex flex-col items-center justify-between h-screen w-full px-8 py-16"
-      style={{ backgroundColor: '#0a1a0e' }}
+      className="flex flex-col items-center justify-between w-full px-8 py-16"
+      style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
     >
       {/* Top spacer */}
       <div />
@@ -11,7 +14,7 @@ export function WelcomePage() {
       {/* Center content */}
       <div className="flex flex-col items-center gap-6 text-center">
         <h1
-          className="text-5xl font-bold tracking-widest"
+          className="text-5xl font-bold"
           style={{
             fontFamily: "'Playfair Display', serif",
             color: '#f0ede6',
@@ -22,10 +25,11 @@ export function WelcomePage() {
         </h1>
 
         <p
-          className="text-xs tracking-[0.3em] uppercase"
+          className="text-xs uppercase"
           style={{
             fontFamily: "'DM Mono', monospace",
             color: '#6b8f71',
+            letterSpacing: '0.3em',
           }}
         >
           Submit a photo to identify your turtle
@@ -34,21 +38,18 @@ export function WelcomePage() {
 
       {/* Bottom CTA */}
       <button
-        className="w-full max-w-xs py-4 text-xs tracking-[0.25em] uppercase border transition-all duration-300"
+        type="button"
+        className="w-full max-w-xs py-4 text-xs uppercase border transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         style={{
           fontFamily: "'DM Mono', monospace",
-          color: '#6b8f71',
+          letterSpacing: '0.25em',
+          color: hovered ? '#0a1a0e' : '#6b8f71',
           borderColor: '#6b8f71',
-          backgroundColor: 'transparent',
+          backgroundColor: hovered ? '#6b8f71' : 'transparent',
+          outlineColor: '#6b8f71',
         }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#6b8f71';
-          (e.currentTarget as HTMLButtonElement).style.color = '#0a1a0e';
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-          (e.currentTarget as HTMLButtonElement).style.color = '#6b8f71';
-        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
         Get Started
       </button>
