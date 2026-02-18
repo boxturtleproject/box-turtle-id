@@ -1,6 +1,11 @@
+// src/pages/WelcomePage.tsx
 import { useState } from 'react';
 
-export function WelcomePage() {
+interface WelcomePageProps {
+  onGetStarted: () => void;
+}
+
+export function WelcomePage({ onGetStarted }: WelcomePageProps) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -37,22 +42,25 @@ export function WelcomePage() {
       </div>
 
       {/* Bottom CTA */}
-      <button
-        type="button"
-        className="w-full max-w-xs py-4 text-xs uppercase border transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-        style={{
-          fontFamily: "'DM Mono', monospace",
-          letterSpacing: '0.25em',
-          color: hovered ? '#0a1a0e' : '#6b8f71',
-          borderColor: '#6b8f71',
-          backgroundColor: hovered ? '#6b8f71' : 'transparent',
-          outlineColor: '#6b8f71',
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        Get Started
-      </button>
+      <div className="w-full max-w-xs">
+        <button
+          type="button"
+          className="w-full py-4 text-xs uppercase border transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          style={{
+            fontFamily: "'DM Mono', monospace",
+            letterSpacing: '0.25em',
+            color: hovered ? '#0a1a0e' : '#6b8f71',
+            borderColor: '#6b8f71',
+            backgroundColor: hovered ? '#6b8f71' : 'transparent',
+            outlineColor: '#6b8f71',
+          }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onClick={onGetStarted}
+        >
+          Get Started
+        </button>
+      </div>
     </div>
   );
 }
