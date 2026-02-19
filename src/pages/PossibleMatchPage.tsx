@@ -14,6 +14,7 @@ interface PossibleMatchPageProps {
   onBack: () => void;
   onSelectCandidate: (turtleNickname: string) => void;
   onNoMatch: () => void;
+  siteName: string;
 }
 
 type CardState =
@@ -176,6 +177,7 @@ export function PossibleMatchPage({
   onBack,
   onSelectCandidate,
   onNoMatch,
+  siteName,
 }: PossibleMatchPageProps) {
   const [noMatchHovered, setNoMatchHovered] = useState(false);
 
@@ -185,7 +187,7 @@ export function PossibleMatchPage({
       style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
     >
       {/* Header */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
         <button
           type="button"
           onClick={onBack}
@@ -196,6 +198,19 @@ export function PossibleMatchPage({
             <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        {siteName && (
+          <p
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              color: '#a8c5ae',
+              fontSize: '0.6rem',
+              letterSpacing: '0.25em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {siteName}
+          </p>
+        )}
         <p
           style={{
             fontFamily: "'DM Mono', monospace",

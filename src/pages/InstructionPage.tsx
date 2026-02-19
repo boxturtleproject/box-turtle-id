@@ -7,6 +7,7 @@ import turtleRightSide from '../assets/turtle-right-side.jpg';
 interface InstructionPageProps {
   onBack: () => void;
   onIdentify: () => void;
+  siteName: string;
 }
 
 interface PhotoCardProps {
@@ -154,7 +155,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
   );
 }
 
-export function InstructionPage({ onBack, onIdentify }: InstructionPageProps) {
+export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
@@ -168,17 +169,30 @@ export function InstructionPage({ onBack, onIdentify }: InstructionPageProps) {
       style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
     >
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-1">
         <button
           type="button"
           onClick={onBack}
-          style={{ color: '#6b8f71', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          style={{ color: '#6b8f71', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        {siteName && (
+          <p
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              color: '#a8c5ae',
+              fontSize: '0.6rem',
+              letterSpacing: '0.25em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {siteName}
+          </p>
+        )}
         <h1
           style={{
             fontFamily: "'Playfair Display', serif",
