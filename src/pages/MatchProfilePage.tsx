@@ -13,6 +13,7 @@ interface MatchProfilePageProps {
   onNotMyTurtle: () => void;
   turtleNickname?: string;
   mode?: 'confirmed' | 'review';
+  siteName?: string;
 }
 
 type PageState =
@@ -53,6 +54,7 @@ export function MatchProfilePage({
   onNotMyTurtle,
   turtleNickname = DEFAULT_TURTLE_ID,
   mode = 'confirmed',
+  siteName = '',
 }: MatchProfilePageProps) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [email, setEmail] = useState('');
@@ -135,6 +137,19 @@ export function MatchProfilePage({
             <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+        {siteName && (
+          <p
+            style={{
+              fontFamily: "'DM Mono', monospace",
+              color: '#a8c5ae',
+              fontSize: '0.6rem',
+              letterSpacing: '0.25em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {siteName}
+          </p>
+        )}
         <p
           style={{
             fontFamily: "'DM Mono', monospace",
