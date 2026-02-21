@@ -242,8 +242,8 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
           cursor: identifyEnabled ? 'pointer' : 'not-allowed',
           color: identifyEnabled
             ? identifyHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)'
-            : '#2a4030',
-          borderColor: identifyEnabled ? 'var(--color-border-action)' : '#2a4030',
+            : 'var(--color-text-disabled)',
+          borderColor: identifyEnabled ? 'var(--color-border-action)' : 'var(--color-text-disabled)',
           backgroundColor: identifyEnabled && identifyHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
         }}
         onMouseEnter={() => identifyEnabled && setIdentifyHovered(true)}
