@@ -29,7 +29,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
     <div
       className="w-full flex flex-col gap-3"
       style={{
-        borderTop: '1px solid #1e3a24',
+        borderTop: '1px solid var(--color-border)',
         paddingTop: '1.5rem',
       }}
     >
@@ -37,8 +37,8 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
       <div className="flex items-center justify-between">
         <span
           style={{
-            fontFamily: "'Playfair Display', serif",
-            color: '#f0ede6',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
             fontSize: large ? '1.25rem' : '1rem',
             fontWeight: 600,
           }}
@@ -49,8 +49,8 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
           <span
             className="text-xs uppercase"
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#6b8f71',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
               letterSpacing: '0.2em',
             }}
           >
@@ -64,8 +64,8 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         style={{
           width: '100%',
           aspectRatio: large ? '4/3' : '16/9',
-          border: '1px dashed #3a5c40',
-          backgroundColor: '#0f2414',
+          border: '1px dashed var(--color-border-input)',
+          backgroundColor: 'var(--color-bg-card)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -89,14 +89,14 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
                 width: 24,
                 height: 24,
                 borderRadius: '50%',
-                backgroundColor: '#6b8f71',
+                backgroundColor: 'var(--color-btn-primary-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M2 6l3 3 5-5" stroke="#0a1a0e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M2 6l3 3 5-5" stroke="var(--color-btn-primary-text)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
           </>
@@ -113,8 +113,8 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
       <p
         className="text-sm"
         style={{
-          fontFamily: "'DM Mono', monospace",
-          color: '#a8c5ae',
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-muted)',
           letterSpacing: '0.1em',
         }}
       >
@@ -139,11 +139,11 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         type="button"
         className="w-full py-4 text-sm uppercase border transition-all duration-300"
         style={{
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: 'var(--font-body)',
           letterSpacing: '0.2em',
-          color: hovered ? '#0a1a0e' : '#6b8f71',
-          borderColor: '#6b8f71',
-          backgroundColor: hovered ? '#6b8f71' : 'transparent',
+          color: hovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+          borderColor: 'var(--color-border-action)',
+          backgroundColor: hovered ? 'var(--color-btn-primary-bg)' : 'transparent',
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -166,25 +166,25 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
   return (
     <div
       className="flex flex-col w-full px-8 py-10 gap-8"
-      style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
+      style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       {/* Header */}
       <div className="flex flex-col gap-1">
         <button
           type="button"
           onClick={onBack}
-          style={{ color: '#6b8f71', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
+          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {siteName && (
           <p
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#a8c5ae',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-muted)',
               fontSize: '0.6rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
@@ -195,8 +195,8 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         )}
         <h1
           style={{
-            fontFamily: "'Playfair Display', serif",
-            color: '#f0ede6',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
             fontSize: '1.25rem',
             fontWeight: 700,
             letterSpacing: '0.05em',
@@ -237,14 +237,14 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         disabled={!identifyEnabled}
         className="w-full py-4 text-xs uppercase border transition-all duration-300 mt-4 mb-8"
         style={{
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: 'var(--font-body)',
           letterSpacing: '0.25em',
           cursor: identifyEnabled ? 'pointer' : 'not-allowed',
           color: identifyEnabled
-            ? identifyHovered ? '#0a1a0e' : '#6b8f71'
+            ? identifyHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)'
             : '#2a4030',
-          borderColor: identifyEnabled ? '#6b8f71' : '#2a4030',
-          backgroundColor: identifyEnabled && identifyHovered ? '#6b8f71' : 'transparent',
+          borderColor: identifyEnabled ? 'var(--color-border-action)' : '#2a4030',
+          backgroundColor: identifyEnabled && identifyHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
         }}
         onMouseEnter={() => identifyEnabled && setIdentifyHovered(true)}
         onMouseLeave={() => setIdentifyHovered(false)}
