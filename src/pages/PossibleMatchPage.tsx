@@ -23,9 +23,9 @@ type CardState =
   | { status: 'loaded'; turtle: TurtleRecord };
 
 const CONFIDENCE_COLORS: Record<Confidence, string> = {
-  high: '#6b8f71',
-  medium: '#c8a84b',
-  low: '#a8c5ae',
+  high: 'var(--color-text-secondary)',
+  medium: 'var(--color-text-dev)',
+  low: 'var(--color-text-muted)',
 };
 
 function CandidateCard({
@@ -53,8 +53,8 @@ function CandidateCard({
   return (
     <div
       style={{
-        backgroundColor: '#0f2414',
-        border: '1px solid #1e3a24',
+        backgroundColor: 'var(--color-bg-card)',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden',
       }}
     >
@@ -64,13 +64,13 @@ function CandidateCard({
           style={{
             width: '100%',
             aspectRatio: '16/9',
-            backgroundColor: '#0a1a0e',
+            backgroundColor: 'var(--color-bg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontFamily: "'DM Mono', monospace", color: '#6b8f71', fontSize: '0.7rem', letterSpacing: '0.2em' }}>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.7rem', letterSpacing: '0.2em' }}>
             Loading...
           </span>
         </div>
@@ -80,13 +80,13 @@ function CandidateCard({
           style={{
             width: '100%',
             aspectRatio: '16/9',
-            backgroundColor: '#0a1a0e',
+            backgroundColor: 'var(--color-bg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <span style={{ fontFamily: "'DM Mono', monospace", color: '#a8c5ae', fontSize: '0.7rem', letterSpacing: '0.1em' }}>
+          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-muted)', fontSize: '0.7rem', letterSpacing: '0.1em' }}>
             Photo unavailable
           </span>
         </div>
@@ -107,8 +107,8 @@ function CandidateCard({
         <div className="flex items-center justify-between">
           <span
             style={{
-              fontFamily: "'Playfair Display', serif",
-              color: '#f0ede6',
+              fontFamily: 'var(--font-heading)',
+              color: 'var(--color-text-primary)',
               fontSize: '1.4rem',
               fontWeight: 700,
               letterSpacing: '0.03em',
@@ -118,7 +118,7 @@ function CandidateCard({
           </span>
           <span
             style={{
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: 'var(--font-body)',
               color: badgeColor,
               fontSize: '0.65rem',
               letterSpacing: '0.2em',
@@ -141,8 +141,8 @@ function CandidateCard({
             padding: 0,
             cursor: 'pointer',
             textAlign: 'left',
-            fontFamily: "'DM Mono', monospace",
-            color: '#6b8f71',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
             fontSize: '0.75rem',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
@@ -155,11 +155,11 @@ function CandidateCard({
           type="button"
           className="w-full py-3 text-sm uppercase border transition-all duration-300"
           style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: 'var(--font-body)',
             letterSpacing: '0.2em',
-            color: selectHovered ? '#0a1a0e' : '#6b8f71',
-            borderColor: '#6b8f71',
-            backgroundColor: selectHovered ? '#6b8f71' : 'transparent',
+            color: selectHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+            borderColor: 'var(--color-border-action)',
+            backgroundColor: selectHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
           }}
           onMouseEnter={() => setSelectHovered(true)}
           onMouseLeave={() => setSelectHovered(false)}
@@ -184,25 +184,25 @@ export function PossibleMatchPage({
   return (
     <div
       className="flex flex-col w-full px-8 py-10 gap-6"
-      style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
+      style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       {/* Header */}
       <div className="flex flex-col gap-1">
         <button
           type="button"
           onClick={onBack}
-          style={{ color: '#6b8f71', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
+          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {siteName && (
           <p
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#a8c5ae',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-muted)',
               fontSize: '0.6rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
@@ -213,8 +213,8 @@ export function PossibleMatchPage({
         )}
         <p
           style={{
-            fontFamily: "'DM Mono', monospace",
-            color: '#6b8f71',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
             fontSize: '0.7rem',
             letterSpacing: '0.25em',
             textTransform: 'uppercase',
@@ -224,8 +224,8 @@ export function PossibleMatchPage({
         </p>
         <p
           style={{
-            fontFamily: "'DM Mono', monospace",
-            color: '#a8c5ae',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-muted)',
             fontSize: '0.8rem',
             letterSpacing: '0.05em',
           }}
@@ -251,11 +251,11 @@ export function PossibleMatchPage({
           type="button"
           className="w-full py-4 text-sm uppercase border transition-all duration-300"
           style={{
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: 'var(--font-body)',
             letterSpacing: '0.2em',
-            color: noMatchHovered ? '#0a1a0e' : '#6b8f71',
-            borderColor: '#6b8f71',
-            backgroundColor: noMatchHovered ? '#6b8f71' : 'transparent',
+            color: noMatchHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+            borderColor: 'var(--color-border-action)',
+            backgroundColor: noMatchHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
           }}
           onMouseEnter={() => setNoMatchHovered(true)}
           onMouseLeave={() => setNoMatchHovered(false)}
