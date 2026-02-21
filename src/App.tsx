@@ -4,6 +4,7 @@ import { WelcomePage } from './pages/WelcomePage';
 import { InstructionPage } from './pages/InstructionPage';
 import { MatchProfilePage } from './pages/MatchProfilePage';
 import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPage';
+import { DevRoutingModal } from './components/DevRoutingModal';
 
 type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match';
 
@@ -25,6 +26,7 @@ function App() {
   const [page, setPage] = useState<Page>('welcome');
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [showDevModal, setShowDevModal] = useState(false);
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
 
@@ -64,11 +66,36 @@ function App() {
 
   if (page === 'instructions') {
     return (
-      <InstructionPage
-        onBack={() => setPage('welcome')}
-        onIdentify={() => setPage('possible-match')}
-        siteName={siteName}
-      />
+      <>
+        <InstructionPage
+          onBack={() => setPage('welcome')}
+          onIdentify={() => {
+            if (import.meta.env.DEV) {
+              setShowDevModal(true);
+            } else {
+              setPage('possible-match');
+            }
+          }}
+          siteName={siteName}
+        />
+        {import.meta.env.DEV && showDevModal && (
+          <DevRoutingModal
+            onConfirmedMatch={() => {
+              setShowDevModal(false);
+              setPage('match');
+            }}
+            onPossibleMatch={() => {
+              setShowDevModal(false);
+              setPage('possible-match');
+            }}
+            onNoMatch={() => {
+              setShowDevModal(false);
+              setPage('no-match');
+            }}
+            onDismiss={() => setShowDevModal(false)}
+          />
+        )}
+      </>
     );
   }
 
