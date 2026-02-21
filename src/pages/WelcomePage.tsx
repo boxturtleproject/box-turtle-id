@@ -32,8 +32,8 @@ function SiteCard({ name, location, onSelect }: SiteCardProps) {
     >
       <div
         style={{
-          backgroundColor: hovered ? '#142b19' : '#0f2414',
-          border: '1px solid #1e3a24',
+          backgroundColor: hovered ? 'var(--color-bg-card-hover)' : 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           overflow: 'hidden',
           transition: 'background-color 0.2s',
         }}
@@ -43,17 +43,17 @@ function SiteCard({ name, location, onSelect }: SiteCardProps) {
           style={{
             width: '100%',
             aspectRatio: '16/9',
-            backgroundColor: '#0a1a0e',
+            backgroundColor: 'var(--color-bg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderBottom: '1px solid #1e3a24',
+            borderBottom: '1px solid var(--color-border)',
           }}
         >
           <span
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#2a4030',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-disabled)',
               fontSize: '0.65rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -67,8 +67,8 @@ function SiteCard({ name, location, onSelect }: SiteCardProps) {
         <div style={{ padding: '1rem' }} className="flex flex-col gap-1">
           <span
             style={{
-              fontFamily: "'Playfair Display', serif",
-              color: '#f0ede6',
+              fontFamily: 'var(--font-heading)',
+              color: 'var(--color-text-primary)',
               fontSize: '1.25rem',
               fontWeight: 700,
               letterSpacing: '0.03em',
@@ -78,8 +78,8 @@ function SiteCard({ name, location, onSelect }: SiteCardProps) {
           </span>
           <span
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#a8c5ae',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-muted)',
               fontSize: '0.65rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -97,15 +97,15 @@ export function WelcomePage({ onSelectSite }: WelcomePageProps) {
   return (
     <div
       className="flex flex-col w-full px-8 py-16 gap-10"
-      style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
+      style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       {/* Title */}
       <div className="flex flex-col items-center gap-4 text-center">
         <h1
           className="text-5xl font-bold"
           style={{
-            fontFamily: "'Playfair Display', serif",
-            color: '#f0ede6',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
             letterSpacing: '0.12em',
           }}
         >
@@ -114,8 +114,8 @@ export function WelcomePage({ onSelectSite }: WelcomePageProps) {
         <p
           className="text-xs uppercase"
           style={{
-            fontFamily: "'DM Mono', monospace",
-            color: '#6b8f71',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
             letterSpacing: '0.3em',
           }}
         >
