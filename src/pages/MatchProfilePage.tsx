@@ -26,8 +26,8 @@ function StatChip({ label, value }: { label: string; value: string }) {
     <div className="flex flex-col items-center gap-1">
       <span
         style={{
-          fontFamily: "'DM Mono', monospace",
-          color: '#6b8f71',
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-secondary)',
           fontSize: '0.6rem',
           letterSpacing: '0.2em',
           textTransform: 'uppercase',
@@ -37,8 +37,8 @@ function StatChip({ label, value }: { label: string; value: string }) {
       </span>
       <span
         style={{
-          fontFamily: "'DM Mono', monospace",
-          color: '#f0ede6',
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-primary)',
           fontSize: '0.85rem',
           letterSpacing: '0.05em',
         }}
@@ -94,8 +94,8 @@ export function MatchProfilePage({
 
   if (state.status === 'loading') {
     return (
-      <div className="flex items-center justify-center w-full" style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}>
-        <span style={{ fontFamily: "'DM Mono', monospace", color: '#6b8f71', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+      <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}>
+        <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
           Identifying...
         </span>
       </div>
@@ -104,11 +104,11 @@ export function MatchProfilePage({
 
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}>
-        <span style={{ fontFamily: "'DM Mono', monospace", color: '#ff6b6b', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
+      <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}>
+        <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error)', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
           Error: {state.message}
         </span>
-        <button onClick={onBack} style={{ fontFamily: "'DM Mono', monospace", color: '#6b8f71', background: 'none', border: '1px solid #6b8f71', cursor: 'pointer', fontSize: '0.75rem', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '0.75rem 1.5rem' }}>
+        <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', background: 'none', border: '1px solid var(--color-border-action)', cursor: 'pointer', fontSize: '0.75rem', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '0.75rem 1.5rem' }}>
           ← Go Back
         </button>
       </div>
@@ -123,25 +123,25 @@ export function MatchProfilePage({
   return (
     <div
       className="flex flex-col w-full px-8 py-10 gap-8"
-      style={{ backgroundColor: '#0a1a0e', minHeight: '100dvh' }}
+      style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       {/* Header */}
       <div className="flex flex-col gap-2">
         <button
           type="button"
           onClick={onBack}
-          style={{ color: '#6b8f71', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
+          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="#6b8f71" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         {siteName && (
           <p
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#a8c5ae',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-muted)',
               fontSize: '0.6rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
@@ -152,8 +152,8 @@ export function MatchProfilePage({
         )}
         <p
           style={{
-            fontFamily: "'DM Mono', monospace",
-            color: '#6b8f71',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
             fontSize: '0.7rem',
             letterSpacing: '0.25em',
             textTransform: 'uppercase',
@@ -163,8 +163,8 @@ export function MatchProfilePage({
         </p>
         <h1
           style={{
-            fontFamily: "'Playfair Display', serif",
-            color: '#f0ede6',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
             fontSize: '2.5rem',
             fontWeight: 700,
             letterSpacing: '0.05em',
@@ -199,14 +199,14 @@ export function MatchProfilePage({
       {/* Stats */}
       <div
         className="flex justify-between"
-        style={{ borderTop: '1px solid #1e3a24', borderBottom: '1px solid #1e3a24', paddingTop: '1rem', paddingBottom: '1rem' }}
+        style={{ borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', paddingTop: '1rem', paddingBottom: '1rem' }}
       >
         <StatChip label="Gender" value={turtle.gender || '—'} />
         <StatChip label="First Seen" value={formatDate(turtle.dateFirstIdentified)} />
         <StatChip label="Encounters" value={String(encounterCount)} />
       </div>
       {lastEncounter && (
-        <p style={{ fontFamily: "'DM Mono', monospace", color: '#6b8f71', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '-1.5rem' }}>
+        <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '-1.5rem' }}>
           Last seen {formatDate(lastEncounter)}
         </p>
       )}
@@ -215,12 +215,12 @@ export function MatchProfilePage({
       {turtle.notes && (
         <div
           style={{
-            backgroundColor: '#0f2414',
-            border: '1px solid #1e3a24',
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-border)',
             padding: '1rem',
           }}
         >
-          <p style={{ fontFamily: "'DM Mono', monospace", color: '#a8c5ae', fontSize: '0.8rem', letterSpacing: '0.08em', lineHeight: 1.6 }}>
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-muted)', fontSize: '0.8rem', letterSpacing: '0.08em', lineHeight: 1.6 }}>
             {turtle.notes}
           </p>
         </div>
@@ -229,11 +229,11 @@ export function MatchProfilePage({
       {/* Email signup — confirmed mode only */}
       {mode === 'confirmed' && (
         <div className="flex flex-col gap-3">
-          <p style={{ fontFamily: "'DM Mono', monospace", color: '#a8c5ae', fontSize: '0.75rem', letterSpacing: '0.1em' }}>
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-muted)', fontSize: '0.75rem', letterSpacing: '0.1em' }}>
             We'll email you when this turtle is spotted again
           </p>
           {emailSubmitted ? (
-            <p style={{ fontFamily: "'DM Mono', monospace", color: '#6b8f71', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+            <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
               ✓ You're signed up for updates
             </p>
           ) : (
@@ -246,10 +246,10 @@ export function MatchProfilePage({
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  backgroundColor: '#0f2414',
-                  border: '1px solid #3a5c40',
-                  color: '#f0ede6',
-                  fontFamily: "'DM Mono', monospace",
+                  backgroundColor: 'var(--color-bg-card)',
+                  border: '1px solid var(--color-border-input)',
+                  color: 'var(--color-text-primary)',
+                  fontFamily: 'var(--font-body)',
                   fontSize: '0.8rem',
                   letterSpacing: '0.05em',
                   outline: 'none',
@@ -259,10 +259,10 @@ export function MatchProfilePage({
                 type="button"
                 className="w-full py-3 text-sm uppercase border transition-all duration-300"
                 style={{
-                  fontFamily: "'DM Mono', monospace",
+                  fontFamily: 'var(--font-body)',
                   letterSpacing: '0.2em',
-                  color: '#6b8f71',
-                  borderColor: '#6b8f71',
+                  color: 'var(--color-text-secondary)',
+                  borderColor: 'var(--color-border-action)',
                   backgroundColor: 'transparent',
                 }}
                 onClick={() => {
@@ -283,8 +283,8 @@ export function MatchProfilePage({
             /* Post-submission: confirmation + email signup */
             <div className="flex flex-col gap-3">
               <p style={{
-                fontFamily: "'DM Mono', monospace",
-                color: '#6b8f71',
+                fontFamily: 'var(--font-body)',
+                color: 'var(--color-text-secondary)',
                 fontSize: '0.75rem',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
@@ -292,8 +292,8 @@ export function MatchProfilePage({
                 ✓ Submitted for review. We'll be in touch.
               </p>
               <p style={{
-                fontFamily: "'DM Mono', monospace",
-                color: '#a8c5ae',
+                fontFamily: 'var(--font-body)',
+                color: 'var(--color-text-muted)',
                 fontSize: '0.75rem',
                 letterSpacing: '0.1em',
               }}>
@@ -301,8 +301,8 @@ export function MatchProfilePage({
               </p>
               {emailSubmitted ? (
                 <p style={{
-                  fontFamily: "'DM Mono', monospace",
-                  color: '#6b8f71',
+                  fontFamily: 'var(--font-body)',
+                  color: 'var(--color-text-secondary)',
                   fontSize: '0.75rem',
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
@@ -319,10 +319,10 @@ export function MatchProfilePage({
                     style={{
                       width: '100%',
                       padding: '0.75rem 1rem',
-                      backgroundColor: '#0f2414',
-                      border: '1px solid #3a5c40',
-                      color: '#f0ede6',
-                      fontFamily: "'DM Mono', monospace",
+                      backgroundColor: 'var(--color-bg-card)',
+                      border: '1px solid var(--color-border-input)',
+                      color: 'var(--color-text-primary)',
+                      fontFamily: 'var(--font-body)',
                       fontSize: '0.8rem',
                       letterSpacing: '0.05em',
                       outline: 'none',
@@ -332,10 +332,10 @@ export function MatchProfilePage({
                     type="button"
                     className="w-full py-3 text-sm uppercase border transition-all duration-300"
                     style={{
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: 'var(--font-body)',
                       letterSpacing: '0.2em',
-                      color: '#6b8f71',
-                      borderColor: '#6b8f71',
+                      color: 'var(--color-text-secondary)',
+                      borderColor: 'var(--color-border-action)',
                       backgroundColor: 'transparent',
                     }}
                     onClick={() => { if (email) setEmailSubmitted(true); }}
@@ -351,10 +351,10 @@ export function MatchProfilePage({
               type="button"
               className="w-full py-4 text-sm uppercase transition-all duration-300"
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'var(--font-body)',
                 letterSpacing: '0.2em',
-                color: '#0a1a0e',
-                backgroundColor: confirmHovered ? '#8aab90' : '#6b8f71',
+                color: 'var(--color-btn-primary-text)',
+                backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
                 border: 'none',
               }}
               onMouseEnter={() => setConfirmHovered(true)}
@@ -374,10 +374,10 @@ export function MatchProfilePage({
               type="button"
               className="w-full py-4 text-sm uppercase transition-all duration-300"
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'var(--font-body)',
                 letterSpacing: '0.2em',
-                color: '#0a1a0e',
-                backgroundColor: confirmHovered ? '#8aab90' : '#6b8f71',
+                color: 'var(--color-btn-primary-text)',
+                backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
                 border: 'none',
               }}
               onMouseEnter={() => setConfirmHovered(true)}
@@ -392,11 +392,11 @@ export function MatchProfilePage({
               type="button"
               className="w-full py-4 text-sm uppercase border transition-all duration-300"
               style={{
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: 'var(--font-body)',
                 letterSpacing: '0.2em',
-                color: notMyTurtleHovered ? '#0a1a0e' : '#6b8f71',
-                borderColor: '#6b8f71',
-                backgroundColor: notMyTurtleHovered ? '#6b8f71' : 'transparent',
+                color: notMyTurtleHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+                borderColor: 'var(--color-border-action)',
+                backgroundColor: notMyTurtleHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
               }}
               onMouseEnter={() => setNotMyTurtleHovered(true)}
               onMouseLeave={() => setNotMyTurtleHovered(false)}
