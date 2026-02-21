@@ -18,7 +18,7 @@ export function DevRoutingModal({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(10, 26, 14, 0.92)',
+        backgroundColor: 'var(--color-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -28,8 +28,8 @@ export function DevRoutingModal({
     >
       <div
         style={{
-          backgroundColor: '#0f2414',
-          border: '1px solid #1e3a24',
+          backgroundColor: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           padding: '2rem',
           width: '100%',
           maxWidth: '360px',
@@ -42,12 +42,12 @@ export function DevRoutingModal({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span
             style={{
-              fontFamily: "'DM Mono', monospace",
-              color: '#c8a84b',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-dev)',
               fontSize: '0.6rem',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
-              border: '1px solid #c8a84b',
+              border: '1px solid var(--color-text-dev)',
               padding: '0.15rem 0.4rem',
             }}
           >
@@ -60,8 +60,8 @@ export function DevRoutingModal({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#a8c5ae',
-              fontFamily: "'DM Mono', monospace",
+              color: 'var(--color-text-muted)',
+              fontFamily: 'var(--font-body)',
               fontSize: '0.7rem',
               letterSpacing: '0.1em',
             }}
@@ -73,8 +73,8 @@ export function DevRoutingModal({
         {/* Title */}
         <p
           style={{
-            fontFamily: "'Playfair Display', serif",
-            color: '#f0ede6',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
             fontSize: '1.4rem',
             fontWeight: 700,
             letterSpacing: '0.03em',
@@ -92,11 +92,11 @@ export function DevRoutingModal({
             style={{
               width: '100%',
               padding: '0.875rem 1rem',
-              backgroundColor: '#6b8f71',
+              backgroundColor: 'var(--color-btn-primary-bg)',
               border: 'none',
               cursor: 'pointer',
-              fontFamily: "'DM Mono', monospace",
-              color: '#0a1a0e',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-btn-primary-text)',
               fontSize: '0.75rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -112,10 +112,10 @@ export function DevRoutingModal({
               width: '100%',
               padding: '0.875rem 1rem',
               backgroundColor: 'transparent',
-              border: '1px solid #6b8f71',
+              border: '1px solid var(--color-border-action)',
               cursor: 'pointer',
-              fontFamily: "'DM Mono', monospace",
-              color: '#6b8f71',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
               fontSize: '0.75rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
@@ -131,10 +131,10 @@ export function DevRoutingModal({
               width: '100%',
               padding: '0.875rem 1rem',
               backgroundColor: 'transparent',
-              border: '1px solid #6b8f71',
+              border: '1px solid var(--color-border-action)',
               cursor: 'pointer',
-              fontFamily: "'DM Mono', monospace",
-              color: '#6b8f71',
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
               fontSize: '0.75rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
