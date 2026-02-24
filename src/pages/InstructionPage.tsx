@@ -69,7 +69,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
       <div
         style={{
           width: '100%',
-          aspectRatio: large ? '4/3' : '16/9',
+          aspectRatio: '4/3',
           border: '1px dashed var(--color-border-input)',
           backgroundColor: 'var(--color-bg-card)',
           display: 'flex',
