@@ -6,8 +6,9 @@ import type { SubmittedPhotos } from './pages/InstructionPage';
 import { MatchProfilePage } from './pages/MatchProfilePage';
 import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPage';
 import { DevRoutingModal } from './components/DevRoutingModal';
+import { NoMatchPage } from './pages/NoMatchPage';
 
-type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match';
+type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle';
 
 export type Site = 'patuxent' | 'wallkill';
 
@@ -62,6 +63,16 @@ function App() {
         onBack={() => setPage('instructions')}
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
+        siteName={siteName}
+      />
+    );
+  }
+
+  if (page === 'no-match') {
+    return (
+      <NoMatchPage
+        onRetakePhotos={() => setPage('instructions')}
+        onSubmitNewTurtle={() => setPage('new-turtle')}
         siteName={siteName}
       />
     );
