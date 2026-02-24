@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { WelcomePage } from './pages/WelcomePage';
 import { InstructionPage } from './pages/InstructionPage';
+import type { SubmittedPhotos } from './pages/InstructionPage';
 import { MatchProfilePage } from './pages/MatchProfilePage';
 import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPage';
 import { DevRoutingModal } from './components/DevRoutingModal';
@@ -27,6 +28,8 @@ function App() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [showDevModal, setShowDevModal] = useState(false);
+  const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
+  void submittedPhotos; // will be consumed in a later task
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
 
@@ -69,7 +72,8 @@ function App() {
       <>
         <InstructionPage
           onBack={() => setPage('welcome')}
-          onIdentify={() => {
+          onIdentify={(photos) => {
+            setSubmittedPhotos(photos);
             if (import.meta.env.DEV) {
               setShowDevModal(true);
             } else {

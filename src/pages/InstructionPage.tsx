@@ -4,9 +4,15 @@ import turtleTopView from '../assets/turtle-top-view.gif';
 import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
 
+export interface SubmittedPhotos {
+  top: File;
+  left: File | null;
+  right: File | null;
+}
+
 interface InstructionPageProps {
   onBack: () => void;
-  onIdentify: () => void;
+  onIdentify: (photos: SubmittedPhotos) => void;
   siteName: string;
 }
 
@@ -249,8 +255,8 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         onMouseEnter={() => identifyEnabled && setIdentifyHovered(true)}
         onMouseLeave={() => setIdentifyHovered(false)}
         onClick={() => {
-          if (!identifyEnabled) return;
-          onIdentify();
+          if (!identifyEnabled || !topImage) return;
+          onIdentify({ top: topImage, left: leftImage, right: rightImage });
         }}
       >
         Identify My Turtle
