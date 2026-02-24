@@ -3,20 +3,25 @@ import { useState, useEffect } from 'react';
 import type { SubmittedPhotos } from './InstructionPage';
 
 const BEHAVIORS = [
-  'Basking',
-  'Foraging',
-  'Crossing road',
   'Nesting',
   'Mating',
-  'Other',
+  'Scouting',
+  'Active',
+  'Basking',
+  'Basking in Rain',
+  'Locomoting',
+  'Hidden',
+  'Stationary',
+  'Emerging',
+  'Bathing',
+  'Digging',
 ] as const;
 
 const HEALTH_OPTIONS = [
   'Healthy',
+  'Sick',
   'Injured',
-  'Lethargic',
-  'Shell damage',
-  'Unknown',
+  'Deceased',
 ] as const;
 
 interface NewTurtleSubmissionPageProps {
