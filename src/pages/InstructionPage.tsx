@@ -1,6 +1,6 @@
 // src/pages/InstructionPage.tsx
 import { useRef, useState } from 'react';
-import turtleTopView from '../assets/turtle-top-view.gif';
+import turtleTopView from '../assets/turtle-top-view.jpg';
 import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
 
