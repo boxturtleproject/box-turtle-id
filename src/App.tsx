@@ -7,6 +7,7 @@ import { MatchProfilePage } from './pages/MatchProfilePage';
 import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPage';
 import { DevRoutingModal } from './components/DevRoutingModal';
 import { NoMatchPage } from './pages/NoMatchPage';
+import { NewTurtleSubmissionPage } from './pages/NewTurtleSubmissionPage';
 
 type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle';
 
@@ -30,7 +31,6 @@ function App() {
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [showDevModal, setShowDevModal] = useState(false);
   const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
-  void submittedPhotos; // will be consumed in a later task
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
 
@@ -63,6 +63,17 @@ function App() {
         onBack={() => setPage('instructions')}
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
+        siteName={siteName}
+      />
+    );
+  }
+
+  if (page === 'new-turtle') {
+    return (
+      <NewTurtleSubmissionPage
+        photos={submittedPhotos}
+        onBack={() => setPage('no-match')}
+        onSubmitted={() => setPage('instructions')}
         siteName={siteName}
       />
     );
