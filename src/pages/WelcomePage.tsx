@@ -1,6 +1,8 @@
 // src/pages/WelcomePage.tsx
 import { useState } from 'react';
 import type { Site } from '../App';
+import patuxentMap from '../assets/patuxent-map.jpg';
+import wallkillMap from '../assets/wallkill-map.jpg';
 
 interface WelcomePageProps {
   onSelectSite: (site: Site) => void;
@@ -10,10 +12,11 @@ interface SiteCardProps {
   site: Site;
   name: string;
   location: string;
+  mapImage: string;
   onSelect: () => void;
 }
 
-function SiteCard({ name, location, onSelect }: SiteCardProps) {
+function SiteCard({ name, location, mapImage, onSelect }: SiteCardProps) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -38,30 +41,18 @@ function SiteCard({ name, location, onSelect }: SiteCardProps) {
           transition: 'background-color 0.2s',
         }}
       >
-        {/* Placeholder map image */}
-        <div
+        {/* Map image */}
+        <img
+          src={mapImage}
+          alt={`${name} map`}
           style={{
             width: '100%',
             aspectRatio: '16/9',
-            backgroundColor: 'var(--color-bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            objectFit: 'cover',
             borderBottom: '1px solid var(--color-border)',
+            display: 'block',
           }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-disabled)',
-              fontSize: '0.65rem',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Map coming soon
-          </span>
-        </div>
+        />
 
         {/* Card body */}
         <div style={{ padding: '1rem' }} className="flex flex-col gap-1">
@@ -123,19 +114,21 @@ export function WelcomePage({ onSelectSite }: WelcomePageProps) {
         </p>
       </div>
 
-      {/* Site cards */}
+      {/* Site cards — Wallkill first */}
       <div className="flex flex-col gap-4">
-        <SiteCard
-          site="patuxent"
-          name="Patuxent Research Refuge"
-          location="Maryland"
-          onSelect={() => onSelectSite('patuxent')}
-        />
         <SiteCard
           site="wallkill"
           name="Wallkill Valley Land Trust"
           location="New York"
+          mapImage={wallkillMap}
           onSelect={() => onSelectSite('wallkill')}
+        />
+        <SiteCard
+          site="patuxent"
+          name="Patuxent Research Refuge"
+          location="Maryland"
+          mapImage={patuxentMap}
+          onSelect={() => onSelectSite('patuxent')}
         />
       </div>
     </div>
