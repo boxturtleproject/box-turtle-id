@@ -60,8 +60,8 @@ function parseEncounter(record: any): EncounterRecord {
   };
 }
 
-export async function fetchTurtleByNickname(nickname: string): Promise<TurtleRecord | null> {
-  const formula = encodeURIComponent(`{Nickname} = "${nickname}"`);
+export async function fetchTurtleByNickname(turtleId: string): Promise<TurtleRecord | null> {
+  const formula = encodeURIComponent(`{Turtle ID} = "${turtleId}"`);
   const url = `${BASE_URL}/${TURTLES_TABLE}?filterByFormula=${formula}&maxRecords=1`;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Airtable error: ${res.status}`);
@@ -71,10 +71,10 @@ export async function fetchTurtleByNickname(nickname: string): Promise<TurtleRec
 }
 
 export async function fetchEncountersForTurtle(turtleAirtableId: string): Promise<EncounterRecord[]> {
-  const url = `${BASE_URL}/${ENCOUNTERS_TABLE}?fields[]=Date&fields[]=Turtle+ID`;
+  const formula = encodeURIComponent(`FIND("${turtleAirtableId}", ARRAYJOIN({Turtle ID}))`);
+  const url = `${BASE_URL}/${ENCOUNTERS_TABLE}?fields[]=Date&fields[]=Turtle+ID&filterByFormula=${formula}`;
   const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(`Airtable error: ${res.status}`);
   const data = await res.json();
-  const all: EncounterRecord[] = (data.records ?? []).map(parseEncounter);
-  return all.filter(e => e.turtleIds.includes(turtleAirtableId));
+  return (data.records ?? []).map(parseEncounter);
 }
