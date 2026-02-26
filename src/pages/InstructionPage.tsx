@@ -1,5 +1,5 @@
 // src/pages/InstructionPage.tsx
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import turtleTopView from '../assets/turtle-top-view.jpg';
 import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
@@ -8,6 +8,8 @@ export interface SubmittedPhotos {
   top: File;
   left: File | null;
   right: File | null;
+  other: File[];
+  notes: string;
 }
 
 interface InstructionPageProps {
@@ -51,22 +53,21 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         >
           {label}
         </span>
-        {required && (
-          <span
-            className="text-xs uppercase"
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-secondary)',
-              letterSpacing: '0.2em',
-            }}
-          >
-            Required
-          </span>
-        )}
+        <span
+          className="text-xs uppercase"
+          style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
+            letterSpacing: '0.2em',
+          }}
+        >
+          {required ? 'Required' : 'Optional'}
+        </span>
       </div>
 
       {/* Placeholder / Preview image area */}
       <div
+        onClick={() => inputRef.current?.click()}
         style={{
           width: '100%',
           aspectRatio: '4/3',
@@ -77,6 +78,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
           justifyContent: 'center',
           overflow: 'hidden',
           position: 'relative',
+          cursor: 'pointer',
         }}
       >
         {previewUrl ? (
@@ -161,10 +163,193 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
   );
 }
 
+interface TrackedFile {
+  id: number;
+  file: File;
+}
+
+interface OtherPhotosCardProps {
+  images: TrackedFile[];
+  onImagesChange: (images: TrackedFile[]) => void;
+}
+
+function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const idCounterRef = useRef(0);
+
+  const thumbnailUrls = useMemo(
+    () => images.map((item) => URL.createObjectURL(item.file)),
+    [images]
+  );
+
+  useEffect(() => {
+    return () => {
+      thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [thumbnailUrls]);
+
+  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newTracked: TrackedFile[] = Array.from(files).map((file) => ({
+      id: idCounterRef.current++,
+      file,
+    }));
+    onImagesChange([...images, ...newTracked]);
+    // Reset input so same files can be re-selected if needed
+    e.target.value = '';
+  };
+
+  const handleRemove = (id: number) => {
+    const updated = images.filter((item) => item.id !== id);
+    onImagesChange(updated);
+  };
+
+  return (
+    <div
+      className="w-full flex flex-col gap-3"
+      style={{
+        borderTop: '1px solid var(--color-border)',
+        paddingTop: '1.5rem',
+      }}
+    >
+      {/* Label row */}
+      <div className="flex items-center justify-between">
+        <span
+          style={{
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
+            fontSize: '1rem',
+            fontWeight: 600,
+          }}
+        >
+          Other Photos
+        </span>
+        <span
+          className="text-xs uppercase"
+          style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
+            letterSpacing: '0.2em',
+          }}
+        >
+          Optional
+        </span>
+      </div>
+
+      {/* Tip */}
+      <p
+        className="text-sm"
+        style={{
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-muted)',
+          letterSpacing: '0.1em',
+        }}
+      >
+        Additional photos of the turtle in its environment
+      </p>
+
+      {/* Thumbnail grid or empty placeholder */}
+      {images.length > 0 ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '0.5rem',
+          }}
+        >
+          {images.map((item, index) => (
+            <div
+              key={item.id}
+              style={{
+                position: 'relative',
+                aspectRatio: '4/3',
+                overflow: 'hidden',
+                backgroundColor: 'var(--color-bg-card)',
+              }}
+            >
+              <img
+                src={thumbnailUrls[index]}
+                alt={`Other photo ${index + 1}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemove(item.id)}
+                aria-label={`Remove photo ${index + 1}`}
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--color-btn-primary-bg)',
+                  color: 'var(--color-btn-primary-text)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                  fontSize: '0.75rem',
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            aspectRatio: '4/3',
+            border: '1px dashed var(--color-border-input)',
+            backgroundColor: 'var(--color-bg-card)',
+          }}
+        />
+      )}
+
+      {/* Hidden file input (multiple) */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFilesSelected}
+      />
+
+      {/* Add Photos button */}
+      <button
+        type="button"
+        className="w-full py-4 text-sm uppercase border transition-all duration-300"
+        style={{
+          fontFamily: 'var(--font-body)',
+          letterSpacing: '0.2em',
+          color: hovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+          borderColor: 'var(--color-border-action)',
+          backgroundColor: hovered ? 'var(--color-btn-primary-bg)' : 'transparent',
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => inputRef.current?.click()}
+      >
+        + Add Photos
+      </button>
+    </div>
+  );
+}
+
 export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
+  const [otherImages, setOtherImages] = useState<TrackedFile[]>([]);
+  const [notes, setNotes] = useState('');
   const [identifyHovered, setIdentifyHovered] = useState(false);
 
   const identifyEnabled = topImage !== null;
@@ -212,6 +397,18 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         </h1>
       </div>
 
+      {/* Introductory text */}
+      <p
+        style={{
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-muted)',
+          fontSize: '0.875rem',
+          letterSpacing: '0.05em',
+        }}
+      >
+        Submit photos of your turtle to help us identify it. The top view is required — side views improve accuracy. Tap any photo area or button to get started.
+      </p>
+
       {/* Cards */}
       <PhotoCard
         label="Top View"
@@ -237,6 +434,64 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         onImageSelect={setRightImage}
       />
 
+      {/* Other Photos */}
+      <OtherPhotosCard
+        images={otherImages}
+        onImagesChange={setOtherImages}
+      />
+
+      {/* Observation Notes */}
+      <div
+        className="w-full flex flex-col gap-3"
+        style={{
+          borderTop: '1px solid var(--color-border)',
+          paddingTop: '1.5rem',
+        }}
+      >
+        {/* Label row */}
+        <div className="flex items-center justify-between">
+          <span
+            style={{
+              fontFamily: 'var(--font-heading)',
+              color: 'var(--color-text-primary)',
+              fontSize: '1rem',
+              fontWeight: 600,
+            }}
+          >
+            Observation Notes
+          </span>
+          <span
+            className="text-xs uppercase"
+            style={{
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
+              letterSpacing: '0.2em',
+            }}
+          >
+            Optional
+          </span>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          rows={4}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Anything you noticed about this turtle or its surroundings..."
+          style={{
+            width: '100%',
+            border: '1px solid var(--color-border-input)',
+            backgroundColor: 'var(--color-bg)',
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-primary)',
+            padding: '0.75rem',
+            outline: 'none',
+            resize: 'vertical',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+
       {/* Identify button */}
       <button
         type="button"
@@ -256,7 +511,7 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         onMouseLeave={() => setIdentifyHovered(false)}
         onClick={() => {
           if (!identifyEnabled || !topImage) return;
-          onIdentify({ top: topImage, left: leftImage, right: rightImage });
+          onIdentify({ top: topImage, left: leftImage, right: rightImage, other: otherImages.map((item) => item.file), notes });
         }}
       >
         Identify My Turtle
