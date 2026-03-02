@@ -5,6 +5,11 @@ import {
   fetchEncountersForTurtle,
   type TurtleRecord,
 } from '../services/airtable';
+import {
+  EncounterForm,
+  defaultEncounterFormData,
+  type EncounterFormData,
+} from '../components/EncounterForm';
 
 const DEFAULT_TURTLE_ID = 'T106';
 
@@ -57,11 +62,10 @@ export function MatchProfilePage({
   siteName = '',
 }: MatchProfilePageProps) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
-  const [email, setEmail] = useState('');
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
+  const [submitted, setSubmitted] = useState(false);
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [notMyTurtleHovered, setNotMyTurtleHovered] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -211,7 +215,7 @@ export function MatchProfilePage({
         </p>
       )}
 
-      {/* Notes */}
+      {/* Turtle notes */}
       {turtle.notes && (
         <div
           style={{
@@ -226,187 +230,89 @@ export function MatchProfilePage({
         </div>
       )}
 
-      {/* Email signup — confirmed mode only */}
-      {mode === 'confirmed' && (
-        <div className="flex flex-col gap-3">
-          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-muted)', fontSize: '0.75rem', letterSpacing: '0.1em' }}>
-            We'll email you when this turtle is spotted again
+      {/* Encounter form + action */}
+      {submitted ? (
+        <div className="flex flex-col gap-3 mb-8">
+          <p style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
+            fontSize: '0.75rem',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+          }}>
+            ✓ {mode === 'review' ? "Submitted for review. We'll be in touch." : 'Encounter recorded. Thank you!'}
           </p>
-          {emailSubmitted ? (
-            <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.75rem', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              ✓ You're signed up for updates
-            </p>
-          ) : (
-            <>
-              <input
-                type="email"
-                placeholder="Your email address"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  backgroundColor: 'var(--color-bg-card)',
-                  border: '1px solid var(--color-border-input)',
-                  color: 'var(--color-text-primary)',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '0.8rem',
-                  letterSpacing: '0.05em',
-                  outline: 'none',
-                }}
-              />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-8 mb-8">
+          <EncounterForm
+            value={encounterData}
+            onChange={setEncounterData}
+          />
+
+          <div className="flex flex-col gap-3">
+            {mode === 'confirmed' ? (
+              <>
+                <button
+                  type="button"
+                  className="w-full py-4 text-sm uppercase transition-all duration-300"
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    letterSpacing: '0.2em',
+                    color: 'var(--color-btn-primary-text)',
+                    backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
+                    border: 'none',
+                  }}
+                  onMouseEnter={() => setConfirmHovered(true)}
+                  onMouseLeave={() => setConfirmHovered(false)}
+                  onClick={() => {
+                    console.log('Confirmed turtle:', turtle.nickname, encounterData);
+                    setSubmitted(true);
+                  }}
+                >
+                  This Is My Turtle
+                </button>
+                <button
+                  type="button"
+                  className="w-full py-4 text-sm uppercase border transition-all duration-300"
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    letterSpacing: '0.2em',
+                    color: notMyTurtleHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+                    borderColor: 'var(--color-border-action)',
+                    backgroundColor: notMyTurtleHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
+                  }}
+                  onMouseEnter={() => setNotMyTurtleHovered(true)}
+                  onMouseLeave={() => setNotMyTurtleHovered(false)}
+                  onClick={onNotMyTurtle}
+                >
+                  Not My Turtle
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                className="w-full py-3 text-sm uppercase border transition-all duration-300"
+                className="w-full py-4 text-sm uppercase transition-all duration-300"
                 style={{
                   fontFamily: 'var(--font-body)',
                   letterSpacing: '0.2em',
-                  color: 'var(--color-text-secondary)',
-                  borderColor: 'var(--color-border-action)',
-                  backgroundColor: 'transparent',
+                  color: 'var(--color-btn-primary-text)',
+                  backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
+                  border: 'none',
                 }}
+                onMouseEnter={() => setConfirmHovered(true)}
+                onMouseLeave={() => setConfirmHovered(false)}
                 onClick={() => {
-                  if (email) setEmailSubmitted(true);
+                  console.log('Review submission:', turtle.nickname, encounterData);
+                  setSubmitted(true);
                 }}
               >
-                Notify Me of Future Sightings
+                Submit for Review
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
       )}
-
-      {/* Action buttons */}
-      <div className="flex flex-col gap-3 mb-8">
-        {mode === 'review' ? (
-          submitted ? (
-            /* Post-submission: confirmation + email signup */
-            <div className="flex flex-col gap-3">
-              <p style={{
-                fontFamily: 'var(--font-body)',
-                color: 'var(--color-text-secondary)',
-                fontSize: '0.75rem',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-              }}>
-                ✓ Submitted for review. We'll be in touch.
-              </p>
-              <p style={{
-                fontFamily: 'var(--font-body)',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.75rem',
-                letterSpacing: '0.1em',
-              }}>
-                Sign up for updates when this turtle is confirmed
-              </p>
-              {emailSubmitted ? (
-                <p style={{
-                  fontFamily: 'var(--font-body)',
-                  color: 'var(--color-text-secondary)',
-                  fontSize: '0.75rem',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                }}>
-                  ✓ You're signed up for updates
-                </p>
-              ) : (
-                <>
-                  <input
-                    type="email"
-                    placeholder="Your email address"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem 1rem',
-                      backgroundColor: 'var(--color-bg-card)',
-                      border: '1px solid var(--color-border-input)',
-                      color: 'var(--color-text-primary)',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: '0.8rem',
-                      letterSpacing: '0.05em',
-                      outline: 'none',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="w-full py-3 text-sm uppercase border transition-all duration-300"
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      letterSpacing: '0.2em',
-                      color: 'var(--color-text-secondary)',
-                      borderColor: 'var(--color-border-action)',
-                      backgroundColor: 'transparent',
-                    }}
-                    onClick={() => { if (email) setEmailSubmitted(true); }}
-                  >
-                    Notify Me of Future Sightings
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            /* Pre-submission: Submit for Review button */
-            <button
-              type="button"
-              className="w-full py-4 text-sm uppercase transition-all duration-300"
-              style={{
-                fontFamily: 'var(--font-body)',
-                letterSpacing: '0.2em',
-                color: 'var(--color-btn-primary-text)',
-                backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
-                border: 'none',
-              }}
-              onMouseEnter={() => setConfirmHovered(true)}
-              onMouseLeave={() => setConfirmHovered(false)}
-              onClick={() => {
-                // TODO: send submission to Airtable / site director
-                setSubmitted(true);
-              }}
-            >
-              Submit for Review
-            </button>
-          )
-        ) : (
-          /* Confirmed mode: original buttons */
-          <>
-            <button
-              type="button"
-              className="w-full py-4 text-sm uppercase transition-all duration-300"
-              style={{
-                fontFamily: 'var(--font-body)',
-                letterSpacing: '0.2em',
-                color: 'var(--color-btn-primary-text)',
-                backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
-                border: 'none',
-              }}
-              onMouseEnter={() => setConfirmHovered(true)}
-              onMouseLeave={() => setConfirmHovered(false)}
-              onClick={() => {
-                console.log('Confirmed turtle:', turtle.nickname);
-              }}
-            >
-              This Is My Turtle
-            </button>
-            <button
-              type="button"
-              className="w-full py-4 text-sm uppercase border transition-all duration-300"
-              style={{
-                fontFamily: 'var(--font-body)',
-                letterSpacing: '0.2em',
-                color: notMyTurtleHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
-                borderColor: 'var(--color-border-action)',
-                backgroundColor: notMyTurtleHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
-              }}
-              onMouseEnter={() => setNotMyTurtleHovered(true)}
-              onMouseLeave={() => setNotMyTurtleHovered(false)}
-              onClick={onNotMyTurtle}
-            >
-              Not My Turtle
-            </button>
-          </>
-        )}
-      </div>
     </div>
   );
 }
