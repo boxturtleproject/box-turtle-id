@@ -9,7 +9,6 @@ export interface SubmittedPhotos {
   left: File | null;
   right: File | null;
   other: File[];
-  notes: string;
 }
 
 interface InstructionPageProps {
@@ -349,7 +348,6 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
   const [otherImages, setOtherImages] = useState<TrackedFile[]>([]);
-  const [notes, setNotes] = useState('');
   const [identifyHovered, setIdentifyHovered] = useState(false);
 
   const identifyEnabled = topImage !== null;
@@ -440,58 +438,6 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         onImagesChange={setOtherImages}
       />
 
-      {/* Observation Notes */}
-      <div
-        className="w-full flex flex-col gap-3"
-        style={{
-          borderTop: '1px solid var(--color-border)',
-          paddingTop: '1.5rem',
-        }}
-      >
-        {/* Label row */}
-        <div className="flex items-center justify-between">
-          <span
-            style={{
-              fontFamily: 'var(--font-heading)',
-              color: 'var(--color-text-primary)',
-              fontSize: '1rem',
-              fontWeight: 600,
-            }}
-          >
-            Observation Notes
-          </span>
-          <span
-            className="text-xs uppercase"
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-secondary)',
-              letterSpacing: '0.2em',
-            }}
-          >
-            Optional
-          </span>
-        </div>
-
-        {/* Textarea */}
-        <textarea
-          rows={4}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Anything you noticed about this turtle or its surroundings..."
-          style={{
-            width: '100%',
-            border: '1px solid var(--color-border-input)',
-            backgroundColor: 'var(--color-bg)',
-            fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-primary)',
-            padding: '0.75rem',
-            outline: 'none',
-            resize: 'vertical',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
-
       {/* Identify button */}
       <button
         type="button"
@@ -511,7 +457,7 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
         onMouseLeave={() => setIdentifyHovered(false)}
         onClick={() => {
           if (!identifyEnabled || !topImage) return;
-          onIdentify({ top: topImage, left: leftImage, right: rightImage, other: otherImages.map((item) => item.file), notes });
+          onIdentify({ top: topImage, left: leftImage, right: rightImage, other: otherImages.map((item) => item.file) });
         }}
       >
         Identify My Turtle
