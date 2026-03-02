@@ -2,18 +2,32 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 export const BEHAVIORS = [
+  'Digging',
   'Nesting',
   'Mating',
-  'Scouting',
-  'Active',
-  'Basking',
-  'Basking in Rain',
   'Locomoting',
-  'Hidden',
   'Stationary',
-  'Emerging',
+  'Basking',
+  'Hiding',
   'Bathing',
-  'Digging',
+] as const;
+
+export const CONDITIONS = [
+  'Sunny',
+  'Damp',
+  'Rainy',
+  'Cloudy',
+  'Foggy',
+  'Dry',
+  'Humid',
+  'Hot',
+] as const;
+
+export const SETTING_OPTIONS = [
+  'Road',
+  'Field',
+  'Woods',
+  'Wetland',
 ] as const;
 
 export const HEALTH_OPTIONS = [
@@ -26,6 +40,8 @@ export const HEALTH_OPTIONS = [
 export interface EncounterFormData {
   date: string;
   location: string;
+  setting: string[];
+  conditions: string[];
   behaviors: string[];
   health: string;
   observationNotes: string;
@@ -38,6 +54,8 @@ export function defaultEncounterFormData(): EncounterFormData {
   return {
     date: new Date().toISOString().split('T')[0],
     location: '',
+    setting: [],
+    conditions: [],
     behaviors: [],
     health: '',
     observationNotes: '',
@@ -87,11 +105,12 @@ export function EncounterForm({ includeNickname = false, value, onChange }: Enco
     onChange({ ...value, [key]: val });
   }
 
-  function toggleBehavior(b: string) {
-    const next = value.behaviors.includes(b)
-      ? value.behaviors.filter(x => x !== b)
-      : [...value.behaviors, b];
-    set('behaviors', next);
+  function toggleItem(key: 'behaviors' | 'conditions' | 'setting', item: string) {
+    const current = value[key];
+    const next = current.includes(item)
+      ? current.filter(x => x !== item)
+      : [...current, item];
+    set(key, next);
   }
 
   return (
@@ -115,6 +134,60 @@ export function EncounterForm({ includeNickname = false, value, onChange }: Enco
         />
       </FieldGroup>
 
+      <FieldGroup label="Setting">
+        <div className="flex flex-col gap-2">
+          {SETTING_OPTIONS.map(s => (
+            <label
+              key={s}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontFamily: 'var(--font-body)',
+                color: 'var(--color-text-primary)',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={value.setting.includes(s)}
+                onChange={() => toggleItem('setting', s)}
+                style={{ accentColor: 'var(--color-btn-primary-bg)' }}
+              />
+              {s}
+            </label>
+          ))}
+        </div>
+      </FieldGroup>
+
+      <FieldGroup label="Conditions">
+        <div className="flex flex-col gap-2">
+          {CONDITIONS.map(c => (
+            <label
+              key={c}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontFamily: 'var(--font-body)',
+                color: 'var(--color-text-primary)',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={value.conditions.includes(c)}
+                onChange={() => toggleItem('conditions', c)}
+                style={{ accentColor: 'var(--color-btn-primary-bg)' }}
+              />
+              {c}
+            </label>
+          ))}
+        </div>
+      </FieldGroup>
+
       <FieldGroup label="Observed Behavior">
         <div className="flex flex-col gap-2">
           {BEHAVIORS.map(b => (
@@ -133,7 +206,7 @@ export function EncounterForm({ includeNickname = false, value, onChange }: Enco
               <input
                 type="checkbox"
                 checked={value.behaviors.includes(b)}
-                onChange={() => toggleBehavior(b)}
+                onChange={() => toggleItem('behaviors', b)}
                 style={{ accentColor: 'var(--color-btn-primary-bg)' }}
               />
               {b}
