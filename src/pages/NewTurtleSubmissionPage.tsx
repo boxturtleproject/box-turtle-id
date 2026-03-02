@@ -1,28 +1,11 @@
 // src/pages/NewTurtleSubmissionPage.tsx
 import { useState, useEffect } from 'react';
 import type { SubmittedPhotos } from './InstructionPage';
-
-const BEHAVIORS = [
-  'Nesting',
-  'Mating',
-  'Scouting',
-  'Active',
-  'Basking',
-  'Basking in Rain',
-  'Locomoting',
-  'Hidden',
-  'Stationary',
-  'Emerging',
-  'Bathing',
-  'Digging',
-] as const;
-
-const HEALTH_OPTIONS = [
-  'Healthy',
-  'Sick',
-  'Injured',
-  'Deceased',
-] as const;
+import {
+  EncounterForm,
+  defaultEncounterFormData,
+  type EncounterFormData,
+} from '../components/EncounterForm';
 
 interface NewTurtleSubmissionPageProps {
   photos: SubmittedPhotos | null;
@@ -69,18 +52,6 @@ function PhotoThumbnail({ file, label }: { file: File | null; label: string }) {
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.625rem 0.75rem',
-  fontFamily: 'var(--font-body)',
-  fontSize: '0.875rem',
-  color: 'var(--color-text-primary)',
-  backgroundColor: 'var(--color-bg)',
-  border: '1px solid var(--color-border-input)',
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
 const labelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   color: 'var(--color-text-secondary)',
@@ -89,43 +60,14 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span style={labelStyle}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
 export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName }: NewTurtleSubmissionPageProps) {
-  const today = new Date().toISOString().split('T')[0];
-  const [date, setDate] = useState(today);
-  const [location, setLocation] = useState('');
-  const [behaviors, setBehaviors] = useState<string[]>([]);
-  const [health, setHealth] = useState('');
-  const [notes, setNotes] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [notifyMe, setNotifyMe] = useState(false);
-  const [email, setEmail] = useState('');
+  const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
-
-  function toggleBehavior(b: string) {
-    setBehaviors(prev =>
-      prev.includes(b) ? prev.filter(x => x !== b) : [...prev, b]
-    );
-  }
 
   function handleSubmit() {
     const payload = {
-      date,
-      location,
-      behaviors,
-      health,
-      notes,
-      nickname,
-      notifyMe,
-      email: notifyMe ? email : null,
+      ...encounterData,
+      email: encounterData.notifyMe ? encounterData.email : null,
       photos: {
         top: photos?.top ?? null,
         left: photos?.left ?? null,
@@ -192,132 +134,12 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName 
         </div>
       )}
 
-      {/* Form */}
-      <div className="flex flex-col gap-6">
-
-        <FieldGroup label="Date">
-          <input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            style={inputStyle}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="Location">
-          <input
-            type="text"
-            value={location}
-            onChange={e => setLocation(e.target.value)}
-            placeholder="e.g. North meadow trail"
-            style={inputStyle}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="Observed Behavior">
-          <div className="flex flex-col gap-2">
-            {BEHAVIORS.map(b => (
-              <label
-                key={b}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontFamily: 'var(--font-body)',
-                  color: 'var(--color-text-primary)',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={behaviors.includes(b)}
-                  onChange={() => toggleBehavior(b)}
-                  style={{ accentColor: 'var(--color-btn-primary-bg)' }}
-                />
-                {b}
-              </label>
-            ))}
-          </div>
-        </FieldGroup>
-
-        <FieldGroup label="Health">
-          <select
-            value={health}
-            onChange={e => setHealth(e.target.value)}
-            style={inputStyle}
-          >
-            <option value="">Select...</option>
-            {HEALTH_OPTIONS.map(h => (
-              <option key={h} value={h}>{h}</option>
-            ))}
-          </select>
-        </FieldGroup>
-
-        <FieldGroup label="General Notes">
-          <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={4}
-            placeholder="Any additional observations..."
-            style={{ ...inputStyle, resize: 'vertical' }}
-          />
-        </FieldGroup>
-
-        <FieldGroup label="Suggested Nickname">
-          <input
-            type="text"
-            value={nickname}
-            onChange={e => setNickname(e.target.value)}
-            placeholder="Optional"
-            style={inputStyle}
-          />
-        </FieldGroup>
-
-        {/* Notify me */}
-        <div className="flex flex-col gap-3">
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-primary)',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={notifyMe}
-              onChange={e => setNotifyMe(e.target.checked)}
-              style={{ accentColor: 'var(--color-btn-primary-bg)' }}
-            />
-            Notify me about this turtle
-          </label>
-          {notifyMe && (
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              style={inputStyle}
-            />
-          )}
-          {notifyMe && (
-            <span
-              style={{
-                fontFamily: 'var(--font-body)',
-                color: 'var(--color-text-muted)',
-                fontSize: '0.75rem',
-                lineHeight: 1.5,
-              }}
-            >
-              We'll email you if this turtle is identified or added to the database.
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Encounter Form */}
+      <EncounterForm
+        includeNickname
+        value={encounterData}
+        onChange={setEncounterData}
+      />
 
       {/* Submit */}
       <button
