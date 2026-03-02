@@ -1,5 +1,5 @@
 // src/components/EncounterForm.tsx
-import React from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 export const BEHAVIORS = [
   'Nesting',
@@ -53,7 +53,7 @@ interface EncounterFormProps {
   onChange: (data: EncounterFormData) => void;
 }
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '0.625rem 0.75rem',
   fontFamily: 'var(--font-body)',
@@ -65,7 +65,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
-const labelStyle: React.CSSProperties = {
+const labelStyle: CSSProperties = {
   fontFamily: 'var(--font-body)',
   color: 'var(--color-text-secondary)',
   fontSize: '0.65rem',
@@ -73,7 +73,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase' as const,
 };
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
       <span style={labelStyle}>{label}</span>
