@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import turtleTopView from '../assets/turtle-top-view.jpg';
 import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
+import type { Site } from '../App';
+import { SiteBand } from '../components/SiteBand';
 
 export interface SubmittedPhotos {
   top: File;
@@ -15,6 +17,7 @@ interface InstructionPageProps {
   onBack: () => void;
   onIdentify: (photos: SubmittedPhotos) => void;
   siteName: string;
+  site: Site;
 }
 
 interface PhotoCardProps {
@@ -343,7 +346,7 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
   );
 }
 
-export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPageProps) {
+export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
@@ -354,34 +357,22 @@ export function InstructionPage({ onBack, onIdentify, siteName }: InstructionPag
 
   return (
     <div
-      className="flex flex-col w-full px-8 py-10 gap-8"
+      className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      <SiteBand site={site} />
       {/* Header */}
-      <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
-          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
+          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
           aria-label="Go back"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {siteName && (
-          <p
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.6rem',
-              letterSpacing: '0.25em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {siteName}
-          </p>
-        )}
         <h1
           style={{
             fontFamily: 'var(--font-heading)',

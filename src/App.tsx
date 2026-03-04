@@ -41,6 +41,7 @@ function App() {
         onNotMyTurtle={() => setPage('instructions')}
         mode="confirmed"
         siteName={siteName}
+        site={selectedSite!}
       />
     );
   }
@@ -54,6 +55,7 @@ function App() {
           onNotMyTurtle={() => { setSelectedCandidate(null); }}
           mode="review"
           siteName={siteName}
+          site={selectedSite!}
         />
       );
     }
@@ -64,6 +66,7 @@ function App() {
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
         siteName={siteName}
+        site={selectedSite!}
       />
     );
   }
@@ -75,6 +78,7 @@ function App() {
         onBack={() => setPage('no-match')}
         onSubmitted={() => setPage('instructions')}
         siteName={siteName}
+        site={selectedSite!}
       />
     );
   }
@@ -85,6 +89,7 @@ function App() {
         onRetakePhotos={() => setPage('instructions')}
         onSubmitNewTurtle={() => setPage('new-turtle')}
         siteName={siteName}
+        site={selectedSite!}
       />
     );
   }
@@ -103,6 +108,7 @@ function App() {
             }
           }}
           siteName={siteName}
+          site={selectedSite!}
         />
         {import.meta.env.DEV && showDevModal && (
           <DevRoutingModal

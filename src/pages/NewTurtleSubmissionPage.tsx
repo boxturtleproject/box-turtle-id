@@ -1,6 +1,8 @@
 // src/pages/NewTurtleSubmissionPage.tsx
 import { useState, useEffect } from 'react';
 import type { SubmittedPhotos } from './InstructionPage';
+import type { Site } from '../App';
+import { SiteBand } from '../components/SiteBand';
 import {
   EncounterForm,
   defaultEncounterFormData,
@@ -12,6 +14,7 @@ interface NewTurtleSubmissionPageProps {
   onBack: () => void;
   onSubmitted: () => void;
   siteName: string;
+  site: Site;
 }
 
 function PhotoThumbnail({ file, label }: { file: File | null; label: string }) {
@@ -60,7 +63,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName }: NewTurtleSubmissionPageProps) {
+export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName: _siteName, site }: NewTurtleSubmissionPageProps) {
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
 
@@ -80,46 +83,34 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName 
 
   return (
     <div
-      className="flex flex-col w-full px-8 py-10 gap-8"
+      className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      <SiteBand site={site} />
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={onBack}
-            style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            aria-label="Go back"
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M13 4L7 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <h1
-            style={{
-              fontFamily: 'var(--font-heading)',
-              color: 'var(--color-text-primary)',
-              fontSize: '1.25rem',
-              fontWeight: 700,
-              letterSpacing: '0.03em',
-              margin: 0,
-            }}
-          >
-            Submit New Turtle
-          </h1>
-        </div>
-        <span
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          aria-label="Go back"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M13 4L7 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <h1
           style={{
-            fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-muted)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
+            fontFamily: 'var(--font-heading)',
+            color: 'var(--color-text-primary)',
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            letterSpacing: '0.03em',
+            margin: 0,
           }}
         >
-          {siteName}
-        </span>
+          Submit New Turtle
+        </h1>
       </div>
 
       {/* Photos */}

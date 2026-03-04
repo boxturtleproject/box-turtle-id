@@ -1,17 +1,21 @@
 // src/pages/NoMatchPage.tsx
+import type { Site } from '../App';
+import { SiteBand } from '../components/SiteBand';
 
 interface NoMatchPageProps {
   onRetakePhotos: () => void;
   onSubmitNewTurtle: () => void;
   siteName: string;
+  site: Site;
 }
 
-export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName }: NoMatchPageProps) {
+export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName: _siteName, site }: NoMatchPageProps) {
   return (
     <div
-      className="flex flex-col w-full px-8 py-10 gap-8"
+      className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      <SiteBand site={site} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
@@ -24,17 +28,6 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName }: NoM
             <path d="M13 4L7 10l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <span
-          style={{
-            fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-muted)',
-            fontSize: '0.65rem',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-          }}
-        >
-          {siteName}
-        </span>
       </div>
 
       {/* Spacer */}

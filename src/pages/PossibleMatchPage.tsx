@@ -1,6 +1,8 @@
 // src/pages/PossibleMatchPage.tsx
 import { useEffect, useState } from 'react';
 import { fetchTurtleByNickname, type TurtleRecord } from '../services/airtable';
+import type { Site } from '../App';
+import { SiteBand } from '../components/SiteBand';
 
 export type Confidence = 'high' | 'medium' | 'low';
 
@@ -15,6 +17,7 @@ interface PossibleMatchPageProps {
   onSelectCandidate: (turtleNickname: string) => void;
   onNoMatch: () => void;
   siteName: string;
+  site: Site;
 }
 
 type CardState =
@@ -177,51 +180,42 @@ export function PossibleMatchPage({
   onBack,
   onSelectCandidate,
   onNoMatch,
-  siteName,
+  siteName: _siteName,
+  site,
 }: PossibleMatchPageProps) {
   const [noMatchHovered, setNoMatchHovered] = useState(false);
 
   return (
     <div
-      className="flex flex-col w-full px-8 py-10 gap-6"
+      className="flex flex-col w-full px-8 pb-10 pt-20 gap-6"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      <SiteBand site={site} />
       {/* Header */}
       <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
-          aria-label="Go back"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        {siteName && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+            aria-label="Go back"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <p
             style={{
               fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.6rem',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.7rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
             }}
           >
-            {siteName}
+            Possible matches
           </p>
-        )}
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-secondary)',
-            fontSize: '0.7rem',
-            letterSpacing: '0.25em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Possible matches
-        </p>
+        </div>
         <p
           style={{
             fontFamily: 'var(--font-body)',

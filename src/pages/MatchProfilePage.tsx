@@ -1,5 +1,7 @@
 // src/pages/MatchProfilePage.tsx
 import { useEffect, useState } from 'react';
+import type { Site } from '../App';
+import { SiteBand } from '../components/SiteBand';
 import {
   fetchTurtleByNickname,
   fetchEncountersForTurtle,
@@ -19,6 +21,7 @@ interface MatchProfilePageProps {
   turtleNickname?: string;
   mode?: 'confirmed' | 'review';
   siteName?: string;
+  site: Site;
 }
 
 type PageState =
@@ -59,7 +62,8 @@ export function MatchProfilePage({
   onNotMyTurtle,
   turtleNickname = DEFAULT_TURTLE_ID,
   mode = 'confirmed',
-  siteName = '',
+  siteName: _siteName = '',
+  site,
 }: MatchProfilePageProps) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
@@ -98,7 +102,8 @@ export function MatchProfilePage({
 
   if (state.status === 'loading') {
     return (
-      <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}>
+      <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
+        <SiteBand site={site} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
           Identifying...
         </span>
@@ -108,7 +113,8 @@ export function MatchProfilePage({
 
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}>
+      <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
+        <SiteBand site={site} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error)', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
           Error: {state.message}
         </span>
@@ -126,45 +132,35 @@ export function MatchProfilePage({
 
   return (
     <div
-      className="flex flex-col w-full px-8 py-10 gap-8"
+      className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
+      <SiteBand site={site} />
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, alignSelf: 'flex-start' }}
-          aria-label="Go back"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        {siteName && (
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+            aria-label="Go back"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M13 4L7 10l6 6" stroke="var(--color-text-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <p
             style={{
               fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.6rem',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.7rem',
               letterSpacing: '0.25em',
               textTransform: 'uppercase',
             }}
           >
-            {siteName}
+            We found your turtle
           </p>
-        )}
-        <p
-          style={{
-            fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-secondary)',
-            fontSize: '0.7rem',
-            letterSpacing: '0.25em',
-            textTransform: 'uppercase',
-          }}
-        >
-          We found your turtle
-        </p>
+        </div>
         <h1
           style={{
             fontFamily: 'var(--font-heading)',
