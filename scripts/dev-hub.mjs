@@ -1,6 +1,6 @@
 // scripts/dev-hub.mjs
 import http from 'http';
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn, exec } from 'child_process';
 import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -288,7 +288,7 @@ const server = http.createServer((req, res) => {
 server.listen(HUB_PORT, () => {
   console.log(`Dev Hub running at http://localhost:${HUB_PORT}`);
   const opener = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
-  import('child_process').then(({ exec }) => exec(`${opener} http://localhost:${HUB_PORT}`));
+  exec(`${opener} http://localhost:${HUB_PORT}`);
 });
 
 process.on('SIGINT', () => {
