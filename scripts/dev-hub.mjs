@@ -58,7 +58,7 @@ function isMerged(branch) {
 }
 
 // --- In-memory server state ---
-// Map<id, { process: ChildProcess|null, state: 'idle'|'starting'|'ready'|'error' }>
+// Map<path, { process: ChildProcess|null, state: 'idle'|'starting'|'ready'|'error' }>
 const serverState = new Map();
 
 function buildStatus() {
@@ -112,12 +112,14 @@ const server = http.createServer((req, res) => {
     serverState.set(wt.path, { process: proc, state: 'starting' });
 
     proc.on('error', () => serverState.set(wt.path, { process: null, state: 'error' }));
-    proc.on('exit',  () => serverState.set(wt.path, { process: null, state: 'error' }));
+    proc.on('exit', (code) => {
+      serverState.set(wt.path, { process: null, state: code === 0 ? 'idle' : 'error' });
+    });
 
     waitForPort(wt.port)
       .then(() => {
         const entry = serverState.get(wt.path);
-        if (entry) serverState.set(wt.path, { ...entry, state: 'ready' });
+        if (entry && entry.process) serverState.set(wt.path, { ...entry, state: 'ready' });
       })
       .catch(() => {
         serverState.set(wt.path, { process: null, state: 'error' });
