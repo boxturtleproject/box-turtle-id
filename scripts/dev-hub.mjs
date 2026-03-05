@@ -10,6 +10,126 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const HUB_PORT = 5100;
 const BASE_PORT = 5173; // main always gets 5173
 
+const HUB_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dev Hub</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Mono', ui-monospace, monospace;
+    background: #0f0f0f;
+    color: #e0e0e0;
+    padding: 2rem;
+    min-height: 100dvh;
+  }
+  h1 {
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+  .grid { display: flex; flex-direction: column; gap: 1px; }
+  .card {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .branch { font-size: 0.875rem; flex: 1; min-width: 200px; }
+  .commit { font-size: 0.7rem; color: #555; font-family: monospace; }
+  .badges { display: flex; gap: 0.5rem; align-items: center; }
+  .badge {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .badge.merged   { background: #1a2a1a; color: #4a8a4a; border: 1px solid #2a4a2a; }
+  .badge.unmerged { background: #2a1a0a; color: #ca7a2a; border: 1px solid #4a2a0a; }
+  .badge.idle     { background: #1e1e1e; color: #555;    border: 1px solid #2a2a2a; }
+  .badge.starting { background: #1a1a2a; color: #6a6aaa; border: 1px solid #2a2a4a; }
+  .badge.ready    { background: #0a1a2a; color: #4a8aaa; border: 1px solid #1a4a6a; }
+  .badge.error    { background: #2a0a0a; color: #aa4a4a; border: 1px solid #4a1a1a; }
+  .actions { display: flex; gap: 0.5rem; margin-left: auto; }
+  button {
+    font-family: inherit;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid #333;
+    background: #222;
+    color: #bbb;
+    padding: 0.3rem 0.75rem;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  button:hover { background: #2a2a2a; border-color: #555; color: #eee; }
+  button.primary { border-color: #1a4a6a; color: #4a8aaa; }
+  button.primary:hover { background: #0a1a2a; }
+  button.danger  { border-color: #4a1a1a; color: #aa4a4a; }
+  button.danger:hover  { background: #2a0a0a; }
+</style>
+</head>
+<body>
+<h1>Box Turtle ID &mdash; Dev Hub</h1>
+<div class="grid" id="root"></div>
+<script>
+  async function poll() {
+    try {
+      const res = await fetch('/api/status');
+      render(await res.json());
+    } catch {}
+  }
+
+  function render(worktrees) {
+    document.getElementById('root').innerHTML = worktrees.map(wt => \`
+      <div class="card">
+        <div class="branch">\${wt.branch}</div>
+        <div class="commit">\${wt.commit}</div>
+        <div class="badges">
+          <span class="badge \${wt.merged ? 'merged' : 'unmerged'}">\${wt.merged ? 'merged' : 'unmerged'}</span>
+          <span class="badge \${wt.serverState}">\${wt.serverState}</span>
+          <span class="badge" style="color:#444;border-color:#222">:\${wt.port}</span>
+        </div>
+        <div class="actions">
+          \${wt.serverState === 'idle' || wt.serverState === 'error'
+            ? \`<button class="primary" onclick="start('\${wt.id}')">Start</button>\`
+            : ''}
+          \${wt.serverState === 'ready'
+            ? \`<button class="primary" onclick="window.open('http://localhost:\${wt.port}')">Open</button>\`
+            : ''}
+          \${wt.merged
+            ? \`<button class="danger" onclick="remove('\${wt.id}')">Remove</button>\`
+            : ''}
+        </div>
+      </div>
+    \`).join('');
+  }
+
+  async function start(id) {
+    await fetch('/api/start/' + id, { method: 'POST' });
+  }
+
+  async function remove(id) {
+    if (!confirm('Remove this worktree? This cannot be undone.')) return;
+    await fetch('/api/remove/' + id, { method: 'POST' });
+  }
+
+  setInterval(poll, 1500);
+  poll();
+</script>
+</body>
+</html>`;
+
 function waitForPort(port, timeoutMs = 30_000) {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
@@ -85,6 +205,11 @@ function sendJson(res, data, status = 200) {
 }
 
 const server = http.createServer((req, res) => {
+  if (req.method === 'GET' && req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    return res.end(HUB_HTML);
+  }
+
   if (req.method === 'GET' && req.url === '/api/status') {
     return sendJson(res, buildStatus());
   }
