@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { fetchTurtleByNickname, type TurtleRecord } from '../services/airtable';
 import type { Site } from '../App';
 import { SiteBand } from '../components/SiteBand';
+import { Footer } from '../components/Footer';
 
 export type Confidence = 'high' | 'medium' | 'low';
 
@@ -16,6 +17,7 @@ interface PossibleMatchPageProps {
   onBack: () => void;
   onSelectCandidate: (turtleNickname: string) => void;
   onNoMatch: () => void;
+  onAbout: () => void;
   siteName: string;
   site: Site;
 }
@@ -180,6 +182,7 @@ export function PossibleMatchPage({
   onBack,
   onSelectCandidate,
   onNoMatch,
+  onAbout,
   siteName: _siteName,
   site,
 }: PossibleMatchPageProps) {
@@ -258,6 +261,7 @@ export function PossibleMatchPage({
           None of these are my turtle
         </button>
       </div>
+      <Footer onAbout={onAbout} />
     </div>
   );
 }

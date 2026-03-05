@@ -78,6 +78,7 @@ function App() {
         onBack={() => setPage('instructions')}
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
