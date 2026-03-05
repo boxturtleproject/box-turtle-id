@@ -16,6 +16,9 @@ const HUB_HTML = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dev Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -83,6 +86,10 @@ const HUB_HTML = `<!DOCTYPE html>
 <h1>Box Turtle ID &mdash; Dev Hub</h1>
 <div class="grid" id="root"></div>
 <script>
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   async function poll() {
     try {
       const res = await fetch('/api/status');
@@ -93,8 +100,8 @@ const HUB_HTML = `<!DOCTYPE html>
   function render(worktrees) {
     document.getElementById('root').innerHTML = worktrees.map(wt => \`
       <div class="card">
-        <div class="branch">\${wt.branch}</div>
-        <div class="commit">\${wt.commit}</div>
+        <div class="branch">\${esc(wt.branch)}</div>
+        <div class="commit">\${esc(wt.commit)}</div>
         <div class="badges">
           <span class="badge \${wt.merged ? 'merged' : 'unmerged'}">\${wt.merged ? 'merged' : 'unmerged'}</span>
           <span class="badge \${wt.serverState}">\${wt.serverState}</span>
