@@ -287,4 +287,14 @@ const server = http.createServer((req, res) => {
 
 server.listen(HUB_PORT, () => {
   console.log(`Dev Hub running at http://localhost:${HUB_PORT}`);
+  const opener = process.platform === 'win32' ? 'start' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  import('child_process').then(({ exec }) => exec(`${opener} http://localhost:${HUB_PORT}`));
+});
+
+process.on('SIGINT', () => {
+  console.log('\nShutting down Dev Hub...');
+  for (const entry of serverState.values()) {
+    if (entry.process) entry.process.kill();
+  }
+  process.exit(0);
 });
