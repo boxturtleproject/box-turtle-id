@@ -8,8 +8,9 @@ import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPa
 import { DevRoutingModal } from './components/DevRoutingModal';
 import { NoMatchPage } from './pages/NoMatchPage';
 import { NewTurtleSubmissionPage } from './pages/NewTurtleSubmissionPage';
+import { AboutPage } from './pages/AboutPage';
 
-type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle';
+type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle' | 'about';
 
 export type Site = 'patuxent' | 'wallkill';
 
@@ -31,8 +32,18 @@ function App() {
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [showDevModal, setShowDevModal] = useState(false);
   const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
+  const [returnPage, setReturnPage] = useState<Page>('welcome');
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
+
+  const handleAbout = () => {
+    setReturnPage(page);
+    setPage('about');
+  };
+
+  if (page === 'about') {
+    return <AboutPage onBack={() => setPage(returnPage)} />;
+  }
 
   if (page === 'match') {
     return (
@@ -137,6 +148,7 @@ function App() {
         setSelectedSite(site);
         setPage('instructions');
       }}
+      onAbout={handleAbout}
     />
   );
 }
