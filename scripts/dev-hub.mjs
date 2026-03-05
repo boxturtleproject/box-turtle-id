@@ -1,6 +1,7 @@
 // scripts/dev-hub.mjs
 import http from 'http';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
+import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,6 +9,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const HUB_PORT = 5100;
 const BASE_PORT = 5173; // main always gets 5173
+
+function waitForPort(port, timeoutMs = 30_000) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    function attempt() {
+      const socket = new net.Socket();
+      socket.setTimeout(300);
+      socket.on('connect', () => { socket.destroy(); resolve(); });
+      socket.on('error',   () => { socket.destroy(); retry(); });
+      socket.on('timeout', () => { socket.destroy(); retry(); });
+      socket.connect(port, '127.0.0.1');
+    }
+    function retry() {
+      if (Date.now() > deadline) return reject(new Error(`Port ${port} not ready after ${timeoutMs}ms`));
+      setTimeout(attempt, 500);
+    }
+    attempt();
+  });
+}
 
 // --- Worktree discovery ---
 
@@ -68,6 +88,44 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/api/status') {
     return sendJson(res, buildStatus());
   }
+
+  if (req.method === 'POST' && req.url?.startsWith('/api/start/')) {
+    const id = req.url.slice('/api/start/'.length);
+    const status = buildStatus();
+    const wt = status.find(w => w.id === id);
+    if (!wt) return sendJson(res, { error: 'not found' }, 404);
+
+    const existing = serverState.get(wt.path);
+    if (existing && (existing.state === 'starting' || existing.state === 'ready')) {
+      return sendJson(res, { ok: true, state: existing.state });
+    }
+
+    serverState.set(wt.path, { process: null, state: 'starting' });
+    sendJson(res, { ok: true, state: 'starting' });
+
+    // Spawn vite asynchronously
+    const proc = spawn('npm', ['run', 'dev', '--', '--port', String(wt.port)], {
+      cwd: wt.path,
+      stdio: 'ignore',
+      detached: false,
+    });
+    serverState.set(wt.path, { process: proc, state: 'starting' });
+
+    proc.on('error', () => serverState.set(wt.path, { process: null, state: 'error' }));
+    proc.on('exit',  () => serverState.set(wt.path, { process: null, state: 'error' }));
+
+    waitForPort(wt.port)
+      .then(() => {
+        const entry = serverState.get(wt.path);
+        if (entry) serverState.set(wt.path, { ...entry, state: 'ready' });
+      })
+      .catch(() => {
+        serverState.set(wt.path, { process: null, state: 'error' });
+      });
+
+    return; // response already sent
+  }
+
   res.writeHead(404);
   res.end('Not found');
 });
