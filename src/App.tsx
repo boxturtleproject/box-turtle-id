@@ -50,6 +50,7 @@ function App() {
       <MatchProfilePage
         onBack={() => setPage('instructions')}
         onNotMyTurtle={() => setPage('instructions')}
+        onAbout={handleAbout}
         mode="confirmed"
         siteName={siteName}
         site={selectedSite!}
@@ -64,6 +65,7 @@ function App() {
           turtleNickname={selectedCandidate}
           onBack={() => setSelectedCandidate(null)}
           onNotMyTurtle={() => { setSelectedCandidate(null); }}
+          onAbout={handleAbout}
           mode="review"
           siteName={siteName}
           site={selectedSite!}
