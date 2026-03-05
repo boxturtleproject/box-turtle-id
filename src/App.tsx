@@ -120,6 +120,7 @@ function App() {
           }}
           siteName={siteName}
           site={selectedSite!}
+          onAbout={handleAbout}
         />
         {import.meta.env.DEV && showDevModal && (
           <DevRoutingModal
