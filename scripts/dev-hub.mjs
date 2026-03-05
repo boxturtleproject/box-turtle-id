@@ -44,10 +44,9 @@ const serverState = new Map();
 function buildStatus() {
   const worktrees = parseWorktrees();
   return worktrees.map((wt, i) => {
-    const id = String(i);
-    const entry = serverState.get(id) ?? { process: null, state: 'idle' };
+    const entry = serverState.get(wt.path) ?? { process: null, state: 'idle' };
     return {
-      id,
+      id:          String(i),
       path:        wt.path,
       branch:      wt.branch ?? '(detached)',
       commit:      wt.commit ?? '???????',
