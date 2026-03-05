@@ -146,7 +146,7 @@ function waitForPort(port, timeoutMs = 30_000) {
       socket.on('connect', () => { socket.destroy(); resolve(); });
       socket.on('error',   () => { socket.destroy(); retry(); });
       socket.on('timeout', () => { socket.destroy(); retry(); });
-      socket.connect(port, '127.0.0.1');
+      socket.connect(port, 'localhost');
     }
     function retry() {
       if (Date.now() > deadline) return reject(new Error(`Port ${port} not ready after ${timeoutMs}ms`));
