@@ -128,6 +128,27 @@ const server = http.createServer((req, res) => {
     return; // response already sent
   }
 
+  if (req.method === 'POST' && req.url?.startsWith('/api/remove/')) {
+    const id = req.url.slice('/api/remove/'.length);
+    const status = buildStatus();
+    const wt = status.find(w => w.id === id);
+    if (!wt) return sendJson(res, { error: 'not found' }, 404);
+    if (!wt.merged) return sendJson(res, { error: 'branch not merged into main' }, 400);
+
+    // Kill running server if any
+    const entry = serverState.get(wt.path);
+    if (entry?.process) entry.process.kill();
+    serverState.delete(wt.path);
+
+    try {
+      execSync(`git worktree remove --force "${wt.path}"`, { cwd: REPO_ROOT });
+      sendJson(res, { ok: true });
+    } catch (e) {
+      sendJson(res, { error: String(e) }, 500);
+    }
+    return;
+  }
+
   res.writeHead(404);
   res.end('Not found');
 });
