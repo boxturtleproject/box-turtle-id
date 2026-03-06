@@ -91,6 +91,7 @@ function App() {
         photos={submittedPhotos}
         onBack={() => setPage('no-match')}
         onSubmitted={() => setPage('instructions')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -102,6 +103,7 @@ function App() {
       <NoMatchPage
         onRetakePhotos={() => setPage('instructions')}
         onSubmitNewTurtle={() => setPage('new-turtle')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
