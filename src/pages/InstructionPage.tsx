@@ -5,6 +5,7 @@ import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
 import type { Site } from '../App';
 import { SiteBand } from '../components/SiteBand';
+import { Footer } from '../components/Footer';
 
 export interface SubmittedPhotos {
   top: File;
@@ -18,6 +19,7 @@ interface InstructionPageProps {
   onIdentify: (photos: SubmittedPhotos) => void;
   siteName: string;
   site: Site;
+  onAbout: () => void;
 }
 
 interface PhotoCardProps {
@@ -346,7 +348,7 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
   );
 }
 
-export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site }: InstructionPageProps) {
+export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site, onAbout }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
@@ -433,7 +435,7 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site 
       <button
         type="button"
         disabled={!identifyEnabled}
-        className="w-full py-4 text-xs uppercase border transition-all duration-300 mt-4 mb-8"
+        className="w-full py-4 text-xs uppercase border transition-all duration-300 mt-4"
         style={{
           fontFamily: 'var(--font-body)',
           letterSpacing: '0.25em',
@@ -453,6 +455,7 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site 
       >
         Identify My Turtle
       </button>
+      <Footer onAbout={onAbout} />
     </div>
   );
 }

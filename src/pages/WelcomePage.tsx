@@ -3,9 +3,11 @@ import { useState } from 'react';
 import type { Site } from '../App';
 import patuxentMap from '../assets/patuxent-map.jpg';
 import wallkillMap from '../assets/wallkill-map.jpg';
+import { Footer } from '../components/Footer';
 
 interface WelcomePageProps {
   onSelectSite: (site: Site) => void;
+  onAbout: () => void;
 }
 
 interface SiteCardProps {
@@ -84,7 +86,7 @@ function SiteCard({ name, location, mapImage, onSelect }: SiteCardProps) {
   );
 }
 
-export function WelcomePage({ onSelectSite }: WelcomePageProps) {
+export function WelcomePage({ onSelectSite, onAbout }: WelcomePageProps) {
   return (
     <div
       className="flex flex-col w-full px-8 py-16 gap-10"
@@ -131,6 +133,42 @@ export function WelcomePage({ onSelectSite }: WelcomePageProps) {
           onSelect={() => onSelectSite('patuxent')}
         />
       </div>
+
+      {/* Blurb */}
+      <p
+        style={{
+          fontFamily: 'var(--font-body)',
+          color: 'var(--color-text-muted)',
+          fontSize: '0.8rem',
+          lineHeight: 1.7,
+          letterSpacing: '0.05em',
+        }}
+      >
+        Thank you for contributing to Box Turtle ID, an experimental project that uses pattern
+        recognition technology to make it more fun and engaging for citizens to identify box turtles
+        in their environment and share observations about their behavior to support local scientific
+        and conservation efforts.{' '}
+        <button
+          type="button"
+          onClick={onAbout}
+          style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-secondary)',
+            fontSize: '0.8rem',
+            letterSpacing: '0.05em',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            textDecoration: 'underline',
+          }}
+        >
+          Learn more here.
+        </button>
+      </p>
+
+      {/* Footer */}
+      <Footer onAbout={onAbout} />
     </div>
   );
 }

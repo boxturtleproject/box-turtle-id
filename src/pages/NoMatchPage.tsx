@@ -1,15 +1,17 @@
 // src/pages/NoMatchPage.tsx
 import type { Site } from '../App';
 import { SiteBand } from '../components/SiteBand';
+import { Footer } from '../components/Footer';
 
 interface NoMatchPageProps {
   onRetakePhotos: () => void;
   onSubmitNewTurtle: () => void;
+  onAbout: () => void;
   siteName: string;
   site: Site;
 }
 
-export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName: _siteName, site }: NoMatchPageProps) {
+export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteName: _siteName, site }: NoMatchPageProps) {
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
@@ -64,7 +66,7 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName: _site
       <div style={{ flex: 1 }} />
 
       {/* Actions */}
-      <div className="flex flex-col gap-4 mb-8">
+      <div className="flex flex-col gap-4">
         <button
           type="button"
           onClick={onSubmitNewTurtle}
@@ -99,6 +101,7 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, siteName: _site
           Retake Photos
         </button>
       </div>
+      <Footer onAbout={onAbout} />
     </div>
   );
 }

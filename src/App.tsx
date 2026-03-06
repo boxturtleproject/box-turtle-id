@@ -8,8 +8,9 @@ import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPa
 import { DevRoutingModal } from './components/DevRoutingModal';
 import { NoMatchPage } from './pages/NoMatchPage';
 import { NewTurtleSubmissionPage } from './pages/NewTurtleSubmissionPage';
+import { AboutPage } from './pages/AboutPage';
 
-type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle';
+type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle' | 'about';
 
 export type Site = 'patuxent' | 'wallkill';
 
@@ -31,14 +32,25 @@ function App() {
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [showDevModal, setShowDevModal] = useState(false);
   const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
+  const [returnPage, setReturnPage] = useState<Page>('welcome');
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
+
+  const handleAbout = () => {
+    setReturnPage(page);
+    setPage('about');
+  };
+
+  if (page === 'about') {
+    return <AboutPage onBack={() => setPage(returnPage)} />;
+  }
 
   if (page === 'match') {
     return (
       <MatchProfilePage
         onBack={() => setPage('instructions')}
         onNotMyTurtle={() => setPage('instructions')}
+        onAbout={handleAbout}
         mode="confirmed"
         siteName={siteName}
         site={selectedSite!}
@@ -53,6 +65,7 @@ function App() {
           turtleNickname={selectedCandidate}
           onBack={() => setSelectedCandidate(null)}
           onNotMyTurtle={() => { setSelectedCandidate(null); }}
+          onAbout={handleAbout}
           mode="review"
           siteName={siteName}
           site={selectedSite!}
@@ -65,6 +78,7 @@ function App() {
         onBack={() => setPage('instructions')}
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -77,6 +91,7 @@ function App() {
         photos={submittedPhotos}
         onBack={() => setPage('no-match')}
         onSubmitted={() => setPage('instructions')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -88,6 +103,7 @@ function App() {
       <NoMatchPage
         onRetakePhotos={() => setPage('instructions')}
         onSubmitNewTurtle={() => setPage('new-turtle')}
+        onAbout={handleAbout}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -109,6 +125,7 @@ function App() {
           }}
           siteName={siteName}
           site={selectedSite!}
+          onAbout={handleAbout}
         />
         {import.meta.env.DEV && showDevModal && (
           <DevRoutingModal
@@ -137,6 +154,7 @@ function App() {
         setSelectedSite(site);
         setPage('instructions');
       }}
+      onAbout={handleAbout}
     />
   );
 }

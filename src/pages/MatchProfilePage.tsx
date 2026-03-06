@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import type { Site } from '../App';
 import { SiteBand } from '../components/SiteBand';
+import { Footer } from '../components/Footer';
 import {
   fetchTurtleByNickname,
   fetchEncountersForTurtle,
@@ -18,6 +19,7 @@ const DEFAULT_TURTLE_ID = 'T106';
 interface MatchProfilePageProps {
   onBack: () => void;
   onNotMyTurtle: () => void;
+  onAbout: () => void;
   turtleNickname?: string;
   mode?: 'confirmed' | 'review';
   siteName?: string;
@@ -60,6 +62,7 @@ function StatChip({ label, value }: { label: string; value: string }) {
 export function MatchProfilePage({
   onBack,
   onNotMyTurtle,
+  onAbout,
   turtleNickname = DEFAULT_TURTLE_ID,
   mode = 'confirmed',
   siteName: _siteName = '',
@@ -309,6 +312,8 @@ export function MatchProfilePage({
           </div>
         </div>
       )}
+
+      <Footer onAbout={onAbout} />
     </div>
   );
 }
