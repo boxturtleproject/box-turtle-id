@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { SubmittedPhotos } from './InstructionPage';
 import type { Site } from '../App';
 import { SiteBand } from '../components/SiteBand';
+import { Footer } from '../components/Footer';
 import {
   EncounterForm,
   defaultEncounterFormData,
@@ -13,6 +14,7 @@ interface NewTurtleSubmissionPageProps {
   photos: SubmittedPhotos | null;
   onBack: () => void;
   onSubmitted: () => void;
+  onAbout: () => void;
   siteName: string;
   site: Site;
 }
@@ -63,7 +65,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName: _siteName, site }: NewTurtleSubmissionPageProps) {
+export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, siteName: _siteName, site }: NewTurtleSubmissionPageProps) {
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
 
@@ -138,7 +140,7 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName:
         onClick={handleSubmit}
         onMouseEnter={() => setSubmitHovered(true)}
         onMouseLeave={() => setSubmitHovered(false)}
-        className="w-full py-4 text-xs uppercase transition-all duration-300 mb-8"
+        className="w-full py-4 text-xs uppercase transition-all duration-300"
         style={{
           fontFamily: 'var(--font-body)',
           letterSpacing: '0.25em',
@@ -150,6 +152,7 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, siteName:
       >
         Submit for Review
       </button>
+      <Footer onAbout={onAbout} />
     </div>
   );
 }
