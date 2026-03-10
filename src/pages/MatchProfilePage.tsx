@@ -151,7 +151,7 @@ export function MatchProfilePage({
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
       {/* Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
