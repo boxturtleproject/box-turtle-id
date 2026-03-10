@@ -106,7 +106,8 @@ function App() {
   if (page === 'match-encounter') {
     return (
       <MatchEncounterPage
-        turtleNickname={confirmedTurtle!} {/* always set by onConfirm before this page renders */}
+        // confirmedTurtle is always set by onConfirm before this page renders
+        turtleNickname={confirmedTurtle!}
         onBack={() => {
           if (selectedCandidate) {
             setPage('possible-match');
