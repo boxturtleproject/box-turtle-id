@@ -8,20 +8,26 @@ import {
   fetchEncountersForTurtle,
   type TurtleRecord,
 } from '../services/airtable';
-import {
-  EncounterForm,
-  defaultEncounterFormData,
-  type EncounterFormData,
-} from '../components/EncounterForm';
 
 const DEFAULT_TURTLE_ID = 'T106';
 
+const DEV_MOCK_TURTLE: TurtleRecord = {
+  airtableId: 'mock',
+  nickname: 'T106',
+  gender: 'Female',
+  dateFirstIdentified: '2021-06-15',
+  carapaceTop: [],
+  carapaceLeft: [],
+  carapaceRight: [],
+  notes: 'Mock turtle for dev — Airtable unavailable.',
+};
+
 interface MatchProfilePageProps {
   onBack: () => void;
+  onConfirm: () => void;
   onNotMyTurtle: () => void;
   onAbout: () => void;
   turtleNickname?: string;
-  mode?: 'confirmed' | 'review';
   siteName?: string;
   site: Site;
 }
@@ -61,16 +67,14 @@ function StatChip({ label, value }: { label: string; value: string }) {
 
 export function MatchProfilePage({
   onBack,
+  onConfirm,
   onNotMyTurtle,
   onAbout,
   turtleNickname = DEFAULT_TURTLE_ID,
-  mode = 'confirmed',
   siteName: _siteName = '',
   site,
 }: MatchProfilePageProps) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
-  const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
-  const [submitted, setSubmitted] = useState(false);
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [notMyTurtleHovered, setNotMyTurtleHovered] = useState(false);
 
@@ -88,7 +92,11 @@ export function MatchProfilePage({
         const lastEncounter = dates.length ? dates[dates.length - 1] : null;
         setState({ status: 'loaded', turtle, encounterCount, lastEncounter });
       } catch (err: any) {
-        setState({ status: 'error', message: err.message ?? 'Failed to load turtle data.' });
+        if (import.meta.env.DEV) {
+          setState({ status: 'loaded', turtle: DEV_MOCK_TURTLE, encounterCount: 3, lastEncounter: '2024-08-10' });
+        } else {
+          setState({ status: 'error', message: err.message ?? 'Failed to load turtle data.' });
+        }
       }
     }
     load();
@@ -229,89 +237,43 @@ export function MatchProfilePage({
         </div>
       )}
 
-      {/* Encounter form + action */}
-      {submitted ? (
-        <div className="flex flex-col gap-3 mb-8">
-          <p style={{
+      {/* Actions */}
+      <div className="flex flex-col gap-3 mb-8">
+        <button
+          type="button"
+          className="w-full py-4 text-sm uppercase transition-all duration-300"
+          style={{
             fontFamily: 'var(--font-body)',
-            color: 'var(--color-text-secondary)',
-            fontSize: '0.75rem',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-          }}>
-            ✓ {mode === 'review' ? "Submitted for review. We'll be in touch." : 'Encounter recorded. Thank you!'}
-          </p>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-8 mb-8">
-          <EncounterForm
-            value={encounterData}
-            onChange={setEncounterData}
-          />
-
-          <div className="flex flex-col gap-3">
-            {mode === 'confirmed' ? (
-              <>
-                <button
-                  type="button"
-                  className="w-full py-4 text-sm uppercase transition-all duration-300"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    letterSpacing: '0.2em',
-                    color: 'var(--color-btn-primary-text)',
-                    backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
-                    border: 'none',
-                  }}
-                  onMouseEnter={() => setConfirmHovered(true)}
-                  onMouseLeave={() => setConfirmHovered(false)}
-                  onClick={() => {
-                    console.log('Confirmed turtle:', turtle.nickname, encounterData);
-                    setSubmitted(true);
-                  }}
-                >
-                  This Is My Turtle
-                </button>
-                <button
-                  type="button"
-                  className="w-full py-4 text-sm uppercase border transition-all duration-300"
-                  style={{
-                    fontFamily: 'var(--font-body)',
-                    letterSpacing: '0.2em',
-                    color: notMyTurtleHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
-                    borderColor: 'var(--color-border-action)',
-                    backgroundColor: notMyTurtleHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
-                  }}
-                  onMouseEnter={() => setNotMyTurtleHovered(true)}
-                  onMouseLeave={() => setNotMyTurtleHovered(false)}
-                  onClick={onNotMyTurtle}
-                >
-                  Not My Turtle
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="w-full py-4 text-sm uppercase transition-all duration-300"
-                style={{
-                  fontFamily: 'var(--font-body)',
-                  letterSpacing: '0.2em',
-                  color: 'var(--color-btn-primary-text)',
-                  backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
-                  border: 'none',
-                }}
-                onMouseEnter={() => setConfirmHovered(true)}
-                onMouseLeave={() => setConfirmHovered(false)}
-                onClick={() => {
-                  console.log('Review submission:', turtle.nickname, encounterData);
-                  setSubmitted(true);
-                }}
-              >
-                Submit for Review
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+            letterSpacing: '0.2em',
+            color: 'var(--color-btn-primary-text)',
+            backgroundColor: confirmHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={() => setConfirmHovered(true)}
+          onMouseLeave={() => setConfirmHovered(false)}
+          onClick={onConfirm}
+        >
+          This Is My Turtle
+        </button>
+        <button
+          type="button"
+          className="w-full py-4 text-sm uppercase border transition-all duration-300"
+          style={{
+            fontFamily: 'var(--font-body)',
+            letterSpacing: '0.2em',
+            color: notMyTurtleHovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+            borderColor: 'var(--color-border-action)',
+            backgroundColor: notMyTurtleHovered ? 'var(--color-btn-primary-bg)' : 'transparent',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={() => setNotMyTurtleHovered(true)}
+          onMouseLeave={() => setNotMyTurtleHovered(false)}
+          onClick={onNotMyTurtle}
+        >
+          Not My Turtle
+        </button>
+      </div>
 
       <Footer onAbout={onAbout} />
     </div>
