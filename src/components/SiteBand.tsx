@@ -1,5 +1,6 @@
 // src/components/SiteBand.tsx
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Site } from '../App';
 
 const SITE_COLORS: Record<Site, string> = {
@@ -20,7 +21,7 @@ interface SiteBandProps {
 export function SiteBand({ site, onWelcome }: SiteBandProps) {
   const [hovered, setHovered] = useState(false);
 
-  const textStyle: React.CSSProperties = {
+  const textStyle: CSSProperties = {
     fontFamily: 'var(--font-body)',
     color: 'white',
     fontSize: '0.6rem',
