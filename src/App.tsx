@@ -9,8 +9,10 @@ import { DevRoutingModal } from './components/DevRoutingModal';
 import { NoMatchPage } from './pages/NoMatchPage';
 import { NewTurtleSubmissionPage } from './pages/NewTurtleSubmissionPage';
 import { AboutPage } from './pages/AboutPage';
+import { MatchEncounterPage } from './pages/MatchEncounterPage';
+import { ThankYouPage } from './pages/ThankYouPage';
 
-type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle' | 'about';
+type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle' | 'about' | 'match-encounter' | 'thank-you';
 
 export type Site = 'patuxent' | 'wallkill';
 
@@ -33,6 +35,7 @@ function App() {
   const [showDevModal, setShowDevModal] = useState(false);
   const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
   const [returnPage, setReturnPage] = useState<Page>('welcome');
+  const [confirmedTurtle, setConfirmedTurtle] = useState<string | null>(null);
 
   const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
 
@@ -46,12 +49,14 @@ function App() {
   }
 
   if (page === 'match') {
+    const matchNickname = 'T106'; // TODO: replace with real match result
     return (
       <MatchProfilePage
+        turtleNickname={matchNickname}
         onBack={() => setPage('instructions')}
+        onConfirm={() => { setConfirmedTurtle(matchNickname); setPage('match-encounter'); }}
         onNotMyTurtle={() => setPage('instructions')}
         onAbout={handleAbout}
-        mode="confirmed"
         siteName={siteName}
         site={selectedSite!}
       />
@@ -64,9 +69,9 @@ function App() {
         <MatchProfilePage
           turtleNickname={selectedCandidate}
           onBack={() => setSelectedCandidate(null)}
-          onNotMyTurtle={() => { setSelectedCandidate(null); }}
+          onConfirm={() => { setConfirmedTurtle(selectedCandidate); setPage('match-encounter'); }}
+          onNotMyTurtle={() => setSelectedCandidate(null)}
           onAbout={handleAbout}
-          mode="review"
           siteName={siteName}
           site={selectedSite!}
         />
@@ -90,9 +95,42 @@ function App() {
       <NewTurtleSubmissionPage
         photos={submittedPhotos}
         onBack={() => setPage('no-match')}
-        onSubmitted={() => setPage('instructions')}
+        onSubmitted={() => setPage('thank-you')}
         onAbout={handleAbout}
         siteName={siteName}
+        site={selectedSite!}
+      />
+    );
+  }
+
+  if (page === 'match-encounter') {
+    return (
+      <MatchEncounterPage
+        turtleNickname={confirmedTurtle ?? 'T106'}
+        onBack={() => {
+          if (selectedCandidate) {
+            setPage('possible-match');
+          } else {
+            setPage('match');
+          }
+        }}
+        onSubmitted={() => setPage('thank-you')}
+        onAbout={handleAbout}
+        siteName={siteName}
+        site={selectedSite!}
+      />
+    );
+  }
+
+  if (page === 'thank-you') {
+    return (
+      <ThankYouPage
+        onDone={() => {
+          setSelectedCandidate(null);
+          setConfirmedTurtle(null);
+          setPage('instructions');
+        }}
+        onAbout={handleAbout}
         site={selectedSite!}
       />
     );
