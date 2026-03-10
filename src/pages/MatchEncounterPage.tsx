@@ -13,6 +13,7 @@ interface MatchEncounterPageProps {
   onAbout: () => void;
   siteName?: string;
   site: Site;
+  onWelcome: () => void;
 }
 
 export function MatchEncounterPage({
@@ -22,6 +23,7 @@ export function MatchEncounterPage({
   onAbout,
   siteName: _siteName = '',
   site,
+  onWelcome,
 }: MatchEncounterPageProps) {
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
@@ -36,7 +38,7 @@ export function MatchEncounterPage({
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
 
       {/* Header */}
       <div className="flex flex-col gap-2">

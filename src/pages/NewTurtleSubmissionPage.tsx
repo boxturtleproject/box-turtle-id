@@ -17,6 +17,7 @@ interface NewTurtleSubmissionPageProps {
   onAbout: () => void;
   siteName: string;
   site: Site;
+  onWelcome: () => void;
 }
 
 function PhotoThumbnail({ file, label }: { file: File | null; label: string }) {
@@ -65,7 +66,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, siteName: _siteName, site }: NewTurtleSubmissionPageProps) {
+export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, siteName: _siteName, site, onWelcome }: NewTurtleSubmissionPageProps) {
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
 
@@ -88,7 +89,7 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, 
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
       {/* Header */}
       <div className="flex items-center gap-4">
         <button

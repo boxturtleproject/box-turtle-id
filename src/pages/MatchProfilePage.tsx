@@ -33,6 +33,7 @@ interface MatchProfilePageProps {
   turtleNickname?: string;
   siteName?: string;
   site: Site;
+  onWelcome: () => void;
 }
 
 type PageState =
@@ -76,6 +77,7 @@ export function MatchProfilePage({
   turtleNickname = DEFAULT_TURTLE_ID,
   siteName: _siteName = '',
   site,
+  onWelcome,
 }: MatchProfilePageProps) {
   const [state, setState] = useState<PageState>({ status: 'loading' });
   const [confirmHovered, setConfirmHovered] = useState(false);
@@ -117,7 +119,7 @@ export function MatchProfilePage({
   if (state.status === 'loading') {
     return (
       <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} />
+        <SiteBand site={site} onWelcome={onWelcome} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
           Identifying...
         </span>
@@ -128,7 +130,7 @@ export function MatchProfilePage({
   if (state.status === 'error') {
     return (
       <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} />
+        <SiteBand site={site} onWelcome={onWelcome} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error)', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
           Error: {state.message}
         </span>

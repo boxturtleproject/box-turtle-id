@@ -20,6 +20,7 @@ interface InstructionPageProps {
   siteName: string;
   site: Site;
   onAbout: () => void;
+  onWelcome: () => void;
 }
 
 interface PhotoCardProps {
@@ -348,7 +349,7 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
   );
 }
 
-export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site, onAbout }: InstructionPageProps) {
+export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site, onAbout, onWelcome }: InstructionPageProps) {
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
@@ -362,7 +363,7 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site,
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
       {/* Header */}
       <div className="flex items-center gap-3">
         <button

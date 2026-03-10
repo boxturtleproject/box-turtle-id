@@ -8,9 +8,10 @@ interface ThankYouPageProps {
   onDone: () => void;
   onAbout: () => void;
   site: Site;
+  onWelcome: () => void;
 }
 
-export function ThankYouPage({ onDone, onAbout, site }: ThankYouPageProps) {
+export function ThankYouPage({ onDone, onAbout, site, onWelcome }: ThankYouPageProps) {
   const [btnHovered, setBtnHovered] = useState(false);
 
   return (
@@ -18,7 +19,7 @@ export function ThankYouPage({ onDone, onAbout, site }: ThankYouPageProps) {
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-10"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
 
       {/* Content */}
       <div className="flex flex-col gap-6 flex-1 justify-center">

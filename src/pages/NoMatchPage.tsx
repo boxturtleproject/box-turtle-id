@@ -9,15 +9,16 @@ interface NoMatchPageProps {
   onAbout: () => void;
   siteName: string;
   site: Site;
+  onWelcome: () => void;
 }
 
-export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteName: _siteName, site }: NoMatchPageProps) {
+export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteName: _siteName, site, onWelcome }: NoMatchPageProps) {
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <button

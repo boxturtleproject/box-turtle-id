@@ -20,6 +20,7 @@ interface PossibleMatchPageProps {
   onAbout: () => void;
   siteName: string;
   site: Site;
+  onWelcome: () => void;
 }
 
 type CardState =
@@ -185,6 +186,7 @@ export function PossibleMatchPage({
   onAbout,
   siteName: _siteName,
   site,
+  onWelcome,
 }: PossibleMatchPageProps) {
   const [noMatchHovered, setNoMatchHovered] = useState(false);
 
@@ -193,7 +195,7 @@ export function PossibleMatchPage({
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-6"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} />
+      <SiteBand site={site} onWelcome={onWelcome} />
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
