@@ -44,6 +44,12 @@ function App() {
     setPage('about');
   };
 
+  const handleWelcome = () => {
+    setSelectedCandidate(null);
+    setConfirmedTurtle(null);
+    setPage('welcome');
+  };
+
   if (page === 'about') {
     return <AboutPage onBack={() => setPage(returnPage)} />;
   }
@@ -57,6 +63,7 @@ function App() {
         onConfirm={() => { setConfirmedTurtle(matchNickname); setPage('match-encounter'); }}
         onNotMyTurtle={() => setPage('instructions')}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -72,6 +79,7 @@ function App() {
           onConfirm={() => { setConfirmedTurtle(selectedCandidate); setPage('match-encounter'); }}
           onNotMyTurtle={() => setSelectedCandidate(null)}
           onAbout={handleAbout}
+          onWelcome={handleWelcome}
           siteName={siteName}
           site={selectedSite!}
         />
@@ -84,6 +92,7 @@ function App() {
         onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
         onNoMatch={() => setPage('no-match')}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -97,6 +106,7 @@ function App() {
         onBack={() => setPage('no-match')}
         onSubmitted={() => setPage('thank-you')}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -117,6 +127,7 @@ function App() {
         }}
         onSubmitted={() => setPage('thank-you')}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -132,6 +143,7 @@ function App() {
           setPage('instructions');
         }}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         site={selectedSite!}
       />
     );
@@ -143,6 +155,7 @@ function App() {
         onRetakePhotos={() => setPage('instructions')}
         onSubmitNewTurtle={() => setPage('new-turtle')}
         onAbout={handleAbout}
+        onWelcome={handleWelcome}
         siteName={siteName}
         site={selectedSite!}
       />
@@ -165,6 +178,7 @@ function App() {
           siteName={siteName}
           site={selectedSite!}
           onAbout={handleAbout}
+          onWelcome={handleWelcome}
         />
         {import.meta.env.DEV && showDevModal && (
           <DevRoutingModal
