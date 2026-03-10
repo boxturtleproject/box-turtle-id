@@ -8,6 +8,9 @@ import {
   fetchEncountersForTurtle,
   type TurtleRecord,
 } from '../services/airtable';
+import turtleTop from '../assets/turtle-top-view.jpg';
+import turtleLeft from '../assets/turtle-left-side.jpg';
+import turtleRight from '../assets/turtle-right-side.jpg';
 
 const DEFAULT_TURTLE_ID = 'T106';
 
@@ -16,9 +19,9 @@ const DEV_MOCK_TURTLE: TurtleRecord = {
   nickname: 'T106',
   gender: 'Female',
   dateFirstIdentified: '2021-06-15',
-  carapaceTop: [],
-  carapaceLeft: [],
-  carapaceRight: [],
+  carapaceTop: [{ id: 'mock-top', url: turtleTop, filename: 'turtle-top-view.jpg' }],
+  carapaceLeft: [{ id: 'mock-left', url: turtleLeft, filename: 'turtle-left-side.jpg' }],
+  carapaceRight: [{ id: 'mock-right', url: turtleRight, filename: 'turtle-right-side.jpg' }],
   notes: 'Mock turtle for dev — Airtable unavailable.',
 };
 
