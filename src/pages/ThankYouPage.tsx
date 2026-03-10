@@ -44,7 +44,24 @@ export function ThankYouPage({ onDone, onAbout, site }: ThankYouPageProps) {
             letterSpacing: '0.05em',
           }}
         >
-          Thank you for contributing to Box Turtle ID, an experimental project that uses pattern recognition technology to make it more fun and engaging for citizens to identify box turtles in their environment and share observations about their behavior to support local scientific and conservation efforts.
+          Thank you for contributing to Box Turtle ID, an experimental project that uses pattern recognition technology to make it more fun and engaging for citizens to identify box turtles in their environment and share observations about their behavior to support local scientific and conservation efforts.{' '}
+          <button
+            type="button"
+            onClick={onAbout}
+            style={{
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.8rem',
+              letterSpacing: '0.05em',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              textDecoration: 'underline',
+            }}
+          >
+            Learn more here.
+          </button>
         </p>
 
         <button
