@@ -63,11 +63,11 @@ function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
         />
 
         {/* Card body */}
-        <div style={{ padding: '1rem' }} className="flex flex-col gap-1">
+        <div style={{ padding: '1rem', backgroundColor: siteColor }} className="flex flex-col gap-1">
           <span
             style={{
               fontFamily: 'var(--font-heading)',
-              color: 'var(--color-text-primary)',
+              color: 'white',
               fontSize: '1.25rem',
               fontWeight: 700,
               letterSpacing: '0.03em',
@@ -78,7 +78,7 @@ function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
           <span
             style={{
               fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-muted)',
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: '0.65rem',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
