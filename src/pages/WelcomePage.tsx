@@ -18,8 +18,14 @@ interface SiteCardProps {
   onSelect: () => void;
 }
 
-function SiteCard({ name, location, mapImage, onSelect }: SiteCardProps) {
+const SITE_COLORS: Record<Site, string> = {
+  patuxent: '#3a7d44',
+  wallkill: '#c8622a',
+};
+
+function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
   const [hovered, setHovered] = useState(false);
+  const siteColor = SITE_COLORS[site];
 
   return (
     <button
@@ -38,7 +44,7 @@ function SiteCard({ name, location, mapImage, onSelect }: SiteCardProps) {
       <div
         style={{
           backgroundColor: hovered ? 'var(--color-bg-card-hover)' : 'var(--color-bg-card)',
-          border: '1px solid var(--color-border)',
+          border: `1px solid ${siteColor}`,
           overflow: 'hidden',
           transition: 'background-color 0.2s',
         }}
