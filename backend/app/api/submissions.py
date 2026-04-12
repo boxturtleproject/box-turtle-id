@@ -151,7 +151,7 @@ async def identify(
     # Compare all query features against each DB capture, keep best score per turtle
     candidates: list[SubmissionCandidate] = []
     best_scores: dict[int, float] = {}  # turtle_id -> best score
-    best_viz_data: dict[int, tuple] = {}  # turtle_id -> (query_feat, db_feat, capture)
+    best_viz_data: dict[int, tuple] = {}  # turtle_id -> (query_feat, db_feat, capture, query_img_idx)
 
     for capture in captures:
         try:
@@ -160,7 +160,7 @@ async def identify(
             )
 
             # Try each submitted photo against this DB capture
-            for qf in all_query_features:
+            for qi, qf in enumerate(all_query_features):
                 result = sift.compare(qf, db_features)
 
                 if result.score < settings.acceptance_threshold:
@@ -169,24 +169,24 @@ async def identify(
                 tid = capture.turtle_id
                 if tid not in best_scores or result.score > best_scores[tid]:
                     best_scores[tid] = result.score
-                    best_viz_data[tid] = (qf, db_features, capture)
+                    best_viz_data[tid] = (qf, db_features, capture, qi)
         except Exception:
             continue
 
     # Build candidate list from best scores
     for tid, score in best_scores.items():
-        qf, db_features, capture = best_viz_data[tid]
+        qf, db_features, capture, qi = best_viz_data[tid]
 
         turtle = db.query(Turtle).filter(Turtle.id == tid).first()
         turtle_nickname = turtle.name or turtle.external_id if turtle else None
 
-        # Generate visualization
+        # Generate visualization using the actual query image that scored best
         viz_filename = f"viz_{uuid.uuid4()}.jpg"
         viz_dir = settings.data_dir / "thumbnails"
         viz_dir.mkdir(parents=True, exist_ok=True)
         db_img = image_svc.load(capture.image_path)
         if db_img is not None:
-            query_img = image_svc.preprocess(query_images[0], crop=True, cropper=cropper)
+            query_img = image_svc.preprocess(query_images[qi], crop=True, cropper=cropper)
             viz_image = sift.generate_match_visualization(
                 query_img, db_img, qf, db_features,
             )
