@@ -60,6 +60,9 @@ export interface TurtleResponse {
   pattern: string | null;
   carapace_flare: string | null;
   cover_capture_id: number | null;
+  capture_count: number;
+  encounter_count: number;
+  latest_capture: string | null;
   captures: CaptureResponse[];
 }
 
