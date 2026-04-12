@@ -68,6 +68,7 @@ async def list_turtles(
         response.capture_count = capture_count
         response.encounter_count = encounter_count
         response.latest_capture = latest_capture
+        response.captures = [CaptureResponse.model_validate(c) for c in captures]
         results.append(response)
 
     return results

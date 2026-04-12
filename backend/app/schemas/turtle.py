@@ -60,6 +60,7 @@ class TurtleResponse(BaseModel):
     id: int
     external_id: str
     name: Optional[str]
+    site: Optional[str] = None
     first_seen: date
     notes: Optional[str]
     cover_capture_id: Optional[int] = None
@@ -75,6 +76,7 @@ class TurtleResponse(BaseModel):
     capture_count: int = 0
     encounter_count: int = 0
     latest_capture: Optional[str] = None
+    captures: list[CaptureResponse] = []
 
 
 class EncounterResponse(BaseModel):

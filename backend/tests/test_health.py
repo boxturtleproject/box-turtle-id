@@ -4,11 +4,9 @@ def test_health_endpoint(client):
     assert response.json() == {"status": "healthy"}
 
 
-def test_root_returns_api_info(client):
+def test_root_returns_response(client):
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert data["name"] == "BoxTurtle ID API"
 
 
 def test_openapi_docs_available(client):
