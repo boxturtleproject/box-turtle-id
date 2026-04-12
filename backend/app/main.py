@@ -10,7 +10,7 @@ from app.api import api_router
 from app.config import settings
 from app.database import create_tables
 
-FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend" / "dist"
+FRONTEND_DIR = Path(__file__).parent.parent.parent / "dist"
 
 
 @asynccontextmanager

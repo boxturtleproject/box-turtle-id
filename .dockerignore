@@ -1,0 +1,13 @@
+node_modules
+dist
+backend/.venv
+backend/data
+backend/yolo/*.weights
+backend/__pycache__
+backend/tests/__pycache__
+backend/.pytest_cache
+backend/test.db
+.git
+.env
+.env.development
+docs
