@@ -1,15 +1,15 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 
-import WelcomePage from './public/WelcomePage';
-import InstructionPage from './public/InstructionPage';
-import PossibleMatchPage from './public/PossibleMatchPage';
-import MatchProfilePage from './public/MatchProfilePage';
-import MatchEncounterPage from './public/MatchEncounterPage';
-import NoMatchPage from './public/NoMatchPage';
-import NewTurtleSubmissionPage from './public/NewTurtleSubmissionPage';
-import ThankYouPage from './public/ThankYouPage';
-import AboutPage from './public/AboutPage';
+import { WelcomePage } from './public/WelcomePage';
+import { InstructionPage } from './public/InstructionPage';
+import { PossibleMatchPage } from './public/PossibleMatchPage';
+import { MatchProfilePage } from './public/MatchProfilePage';
+import { MatchEncounterPage } from './public/MatchEncounterPage';
+import { NoMatchPage } from './public/NoMatchPage';
+import { NewTurtleSubmissionPage } from './public/NewTurtleSubmissionPage';
+import { ThankYouPage } from './public/ThankYouPage';
+import { AboutPage } from './public/AboutPage';
 
 // Lazy-load admin routes
 const AdminDashboard = lazy(() => import('./admin/Dashboard'));
