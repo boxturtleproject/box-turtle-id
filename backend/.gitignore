@@ -1,0 +1,10 @@
+data/
+!data/.gitkeep
+*.db
+test.db
+__pycache__/
+.env
+.venv/
+*.pyc
+.pytest_cache/
+yolo/*.weights
