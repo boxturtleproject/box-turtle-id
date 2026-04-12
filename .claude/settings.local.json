@@ -23,7 +23,16 @@
       "Bash(\"/Users/robertfabricant/Desktop/FAB/9_TURTLES/Box Turtle ID/src/index.css\" << 'EOF'\n@tailwind base;\n@tailwind components;\n@tailwind utilities;\nEOF)",
       "Bash(\"/Users/robertfabricant/Desktop/FAB/9_TURTLES/Box Turtle ID/index.html\" << 'EOF'\n<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <link rel=\"icon\" type=\"image/svg+xml\" href=\"/vite.svg\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Box Turtle ID</title>\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n    <link href=\"https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n    <script type=\"module\" src=\"/src/main.tsx\"></script>\n  </body>\n</html>\nEOF)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(gh repo:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(npm run:*)",
+      "Bash(wc:*)",
+      "Bash(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate)",
+      "Bash(find /Users/claudius/github/box-turtle-id -name .env* -type f)",
+      "Bash(find /Users/claudius/github -name *integration* -o -name *design*)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
