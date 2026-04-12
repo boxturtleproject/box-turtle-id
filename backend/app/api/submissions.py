@@ -349,16 +349,15 @@ def _create_captures_from_submission(
         perm_path = image_svc.save(img)
         thumbnail_path = image_svc.generate_thumbnail(img)
 
-        # Extract SIFT features for carapace_top
+        # Extract SIFT features for matching
         kp_bytes = None
         desc_bytes = None
         kp_count = 0
-        if image_type == "carapace_top":
-            preprocessed = image_svc.preprocess(img, crop=True, cropper=cropper)
-            features = sift.extract_features(preprocessed)
-            if features:
-                kp_bytes, desc_bytes = features.serialize()
-                kp_count = features.keypoint_count
+        preprocessed = image_svc.preprocess(img, crop=True, cropper=cropper)
+        features = sift.extract_features(preprocessed)
+        if features:
+            kp_bytes, desc_bytes = features.serialize()
+            kp_count = features.keypoint_count
 
         capture = Capture(
             turtle_id=turtle_id,
