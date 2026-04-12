@@ -1,23 +1,25 @@
-// src/pages/NewTurtleSubmissionPage.tsx
+// src/public/NewTurtleSubmissionPage.tsx
 import { useState, useEffect } from 'react';
-import type { SubmittedPhotos } from './InstructionPage';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useSite } from '../shared/context/SiteContext';
+import { submitNewTurtle } from '../shared/lib/api';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
 import {
   EncounterForm,
   defaultEncounterFormData,
   type EncounterFormData,
-} from '../components/EncounterForm';
+} from '../shared/components/EncounterForm';
 
-interface NewTurtleSubmissionPageProps {
-  photos: SubmittedPhotos | null;
-  onBack: () => void;
-  onSubmitted: () => void;
-  onAbout: () => void;
-  siteName: string;
-  site: Site;
-  onWelcome: () => void;
+interface LocationState {
+  submissionId: string;
+  photos?: {
+    top: File;
+    left: File | null;
+    right: File | null;
+    other: File[];
+  };
 }
 
 function PhotoThumbnail({ file, label }: { file: File | null; label: string }) {
@@ -66,24 +68,37 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
 };
 
-export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, siteName: _siteName, site, onWelcome }: NewTurtleSubmissionPageProps) {
+export function NewTurtleSubmissionPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { site } = useSite();
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  function handleSubmit() {
-    const payload = {
-      ...encounterData,
-      email: encounterData.notifyMe ? encounterData.email : null,
-      photos: {
-        top: photos?.top ?? null,
-        left: photos?.left ?? null,
-        right: photos?.right ?? null,
-      },
-    };
-    console.log('New turtle submission:', payload);
-    onSubmitted();
+  const state = location.state as LocationState | null;
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!state?.submissionId || !site) throw new Error('Missing submission data');
+      return submitNewTurtle(state.submissionId, encounterData.nickname, encounterData, site);
+    },
+    onSuccess: () => {
+      navigate('/thank-you');
+    },
+  });
+
+  if (!site) {
+    navigate('/');
+    return null;
   }
+
+  if (!state?.submissionId) {
+    navigate('/instructions');
+    return null;
+  }
+
+  const photos = state.photos;
 
   return (
     <div
@@ -91,11 +106,12 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, 
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
       <SiteBand site={site} onWelcome={() => setShowLeaveConfirm(true)} />
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           aria-label="Go back"
         >
@@ -136,10 +152,26 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, 
         onChange={setEncounterData}
       />
 
+      {/* Error */}
+      {mutation.isError && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-text-error, #ef4444)',
+            padding: '1rem',
+          }}
+        >
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error, #ef4444)', fontSize: '0.85rem', margin: 0 }}>
+            {mutation.error instanceof Error ? mutation.error.message : 'An error occurred. Please try again.'}
+          </p>
+        </div>
+      )}
+
       {/* Submit */}
       <button
         type="button"
-        onClick={handleSubmit}
+        disabled={mutation.isPending}
+        onClick={() => mutation.mutate()}
         onMouseEnter={() => setSubmitHovered(true)}
         onMouseLeave={() => setSubmitHovered(false)}
         className="w-full py-4 text-xs uppercase transition-all duration-300"
@@ -149,12 +181,15 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, 
           backgroundColor: submitHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
           color: 'var(--color-btn-primary-text)',
           border: 'none',
-          cursor: 'pointer',
+          cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+          opacity: mutation.isPending ? 0.7 : 1,
         }}
       >
-        Submit for Review
+        {mutation.isPending ? 'Submitting...' : 'Submit for Review'}
       </button>
-      <Footer onAbout={onAbout} />
+
+      <Footer onAbout={() => navigate('/about')} />
+
       {/* Leave confirmation modal */}
       {showLeaveConfirm && (
         <div
@@ -209,7 +244,7 @@ export function NewTurtleSubmissionPage({ photos, onBack, onSubmitted, onAbout, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button
                 type="button"
-                onClick={onWelcome}
+                onClick={() => navigate('/')}
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: '0.75rem',

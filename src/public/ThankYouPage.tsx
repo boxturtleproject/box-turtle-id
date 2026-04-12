@@ -1,25 +1,26 @@
-// src/pages/ThankYouPage.tsx
+// src/public/ThankYouPage.tsx
 import { useState } from 'react';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
+import { useNavigate } from 'react-router-dom';
+import { useSite } from '../shared/context/SiteContext';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
 
-interface ThankYouPageProps {
-  onDone: () => void;
-  onAbout: () => void;
-  site: Site;
-  onWelcome: () => void;
-}
-
-export function ThankYouPage({ onDone, onAbout, site, onWelcome }: ThankYouPageProps) {
+export function ThankYouPage() {
+  const navigate = useNavigate();
+  const { site } = useSite();
   const [btnHovered, setBtnHovered] = useState(false);
+
+  if (!site) {
+    navigate('/');
+    return null;
+  }
 
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-10"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={onWelcome} />
+      <SiteBand site={site} onWelcome={() => navigate('/')} />
 
       {/* Content */}
       <div className="flex flex-col gap-6 flex-1 justify-center">
@@ -48,7 +49,7 @@ export function ThankYouPage({ onDone, onAbout, site, onWelcome }: ThankYouPageP
           Thank you for contributing to Box Turtle ID, an experimental project that uses pattern recognition technology to make it more fun and engaging for citizens to identify box turtles in their environment and share observations about their behavior to support local scientific and conservation efforts.{' '}
           <button
             type="button"
-            onClick={onAbout}
+            onClick={() => navigate('/about')}
             style={{
               fontFamily: 'var(--font-body)',
               color: 'var(--color-text-secondary)',
@@ -78,13 +79,13 @@ export function ThankYouPage({ onDone, onAbout, site, onWelcome }: ThankYouPageP
           }}
           onMouseEnter={() => setBtnHovered(true)}
           onMouseLeave={() => setBtnHovered(false)}
-          onClick={onDone}
+          onClick={() => navigate('/instructions')}
         >
           Identify Another Turtle
         </button>
       </div>
 
-      <Footer onAbout={onAbout} />
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }

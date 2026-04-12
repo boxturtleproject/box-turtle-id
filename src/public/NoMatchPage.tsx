@@ -1,29 +1,43 @@
-// src/pages/NoMatchPage.tsx
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
+// src/public/NoMatchPage.tsx
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSite } from '../shared/context/SiteContext';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
 
-interface NoMatchPageProps {
-  onRetakePhotos: () => void;
-  onSubmitNewTurtle: () => void;
-  onAbout: () => void;
-  siteName: string;
-  site: Site;
-  onWelcome: () => void;
+interface LocationState {
+  submissionId: string;
+  photos?: {
+    top: File;
+    left: File | null;
+    right: File | null;
+    other: File[];
+  };
 }
 
-export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteName: _siteName, site, onWelcome }: NoMatchPageProps) {
+export function NoMatchPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { site } = useSite();
+
+  const state = location.state as LocationState | null;
+
+  if (!site) {
+    navigate('/');
+    return null;
+  }
+
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={onWelcome} />
+      <SiteBand site={site} onWelcome={() => navigate('/')} />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={onRetakePhotos}
+          onClick={() => navigate('/instructions')}
           style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           aria-label="Go back"
         >
@@ -70,7 +84,14 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteNa
       <div className="flex flex-col gap-4">
         <button
           type="button"
-          onClick={onSubmitNewTurtle}
+          onClick={() =>
+            navigate('/results/new-turtle', {
+              state: {
+                submissionId: state?.submissionId,
+                photos: state?.photos,
+              },
+            })
+          }
           className="w-full py-4 text-xs uppercase transition-all duration-300"
           style={{
             fontFamily: 'var(--font-body)',
@@ -85,7 +106,7 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteNa
         </button>
         <button
           type="button"
-          onClick={onRetakePhotos}
+          onClick={() => navigate('/instructions')}
           style={{
             fontFamily: 'var(--font-body)',
             color: 'var(--color-text-muted)',
@@ -102,7 +123,8 @@ export function NoMatchPage({ onRetakePhotos, onSubmitNewTurtle, onAbout, siteNa
           Retake Photos
         </button>
       </div>
-      <Footer onAbout={onAbout} />
+
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }

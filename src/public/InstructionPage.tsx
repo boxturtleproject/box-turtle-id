@@ -1,27 +1,14 @@
-// src/pages/InstructionPage.tsx
+// src/public/InstructionPage.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useSite } from '../shared/context/SiteContext';
+import { submitPhotos } from '../shared/lib/api';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
 import turtleTopView from '../assets/turtle-top-view.jpg';
 import turtleLeftSide from '../assets/turtle-left-side.jpg';
 import turtleRightSide from '../assets/turtle-right-side.jpg';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
-
-export interface SubmittedPhotos {
-  top: File;
-  left: File | null;
-  right: File | null;
-  other: File[];
-}
-
-interface InstructionPageProps {
-  onBack: () => void;
-  onIdentify: (photos: SubmittedPhotos) => void;
-  siteName: string;
-  site: Site;
-  onAbout: () => void;
-  onWelcome: () => void;
-}
 
 interface PhotoCardProps {
   label: string;
@@ -46,7 +33,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         paddingTop: '1.5rem',
       }}
     >
-      {/* Label row */}
       <div className="flex items-center justify-between">
         <span
           style={{
@@ -70,7 +56,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         </span>
       </div>
 
-      {/* Placeholder / Preview image area */}
       <div
         onClick={() => inputRef.current?.click()}
         style={{
@@ -93,7 +78,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
               alt={`${label} preview`}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
-            {/* Checkmark overlay */}
             <div
               style={{
                 position: 'absolute',
@@ -122,7 +106,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         )}
       </div>
 
-      {/* Tip */}
       <p
         className="text-sm"
         style={{
@@ -134,7 +117,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         {tip}
       </p>
 
-      {/* Hidden file input */}
       <input
         ref={inputRef}
         type="file"
@@ -147,7 +129,6 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         }}
       />
 
-      {/* Submit button */}
       <button
         type="button"
         className="w-full py-4 text-sm uppercase border transition-all duration-300"
@@ -202,13 +183,11 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
       file,
     }));
     onImagesChange([...images, ...newTracked]);
-    // Reset input so same files can be re-selected if needed
     e.target.value = '';
   };
 
   const handleRemove = (id: number) => {
-    const updated = images.filter((item) => item.id !== id);
-    onImagesChange(updated);
+    onImagesChange(images.filter((item) => item.id !== id));
   };
 
   return (
@@ -219,7 +198,6 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         paddingTop: '1.5rem',
       }}
     >
-      {/* Label row */}
       <div className="flex items-center justify-between">
         <span
           style={{
@@ -243,7 +221,6 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         </span>
       </div>
 
-      {/* Tip */}
       <p
         className="text-sm"
         style={{
@@ -255,7 +232,6 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         Additional photos of the turtle in its environment
       </p>
 
-      {/* Thumbnail grid or empty placeholder */}
       {images.length > 0 ? (
         <div
           style={{
@@ -302,7 +278,7 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
                   lineHeight: 1,
                 }}
               >
-                ✕
+                x
               </button>
             </div>
           ))}
@@ -318,7 +294,6 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         />
       )}
 
-      {/* Hidden file input (multiple) */}
       <input
         ref={inputRef}
         type="file"
@@ -328,7 +303,6 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         onChange={handleFilesSelected}
       />
 
-      {/* Add Photos button */}
       <button
         type="button"
         className="w-full py-4 text-sm uppercase border transition-all duration-300"
@@ -349,26 +323,71 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
   );
 }
 
-export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site, onAbout, onWelcome }: InstructionPageProps) {
+export function InstructionPage() {
+  const navigate = useNavigate();
+  const { site } = useSite();
   const [topImage, setTopImage] = useState<File | null>(null);
   const [leftImage, setLeftImage] = useState<File | null>(null);
   const [rightImage, setRightImage] = useState<File | null>(null);
   const [otherImages, setOtherImages] = useState<TrackedFile[]>([]);
   const [identifyHovered, setIdentifyHovered] = useState(false);
 
-  const identifyEnabled = topImage !== null;
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!site || !topImage) throw new Error('Missing site or top photo');
+      return submitPhotos(site, {
+        top: topImage,
+        left: leftImage,
+        right: rightImage,
+      });
+    },
+    onSuccess: (data) => {
+      const photos = {
+        top: topImage!,
+        left: leftImage,
+        right: rightImage,
+        other: otherImages.map((t) => t.file),
+      };
+      if (data.candidates.length > 0) {
+        navigate('/results', {
+          state: {
+            submissionId: data.submission_id,
+            candidates: data.candidates,
+            processingTimeMs: data.processing_time_ms,
+            totalCompared: data.total_compared,
+            photos,
+          },
+        });
+      } else {
+        navigate('/results/no-match', {
+          state: {
+            submissionId: data.submission_id,
+            photos,
+          },
+        });
+      }
+    },
+  });
+
+  if (!site) {
+    navigate('/');
+    return null;
+  }
+
+  const identifyEnabled = topImage !== null && !mutation.isPending;
 
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={onWelcome} />
+      <SiteBand site={site} onWelcome={() => navigate('/')} />
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => navigate('/')}
           style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
           aria-label="Go back"
         >
@@ -389,7 +408,7 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site,
         </h1>
       </div>
 
-      {/* Introductory text */}
+      {/* Intro */}
       <p
         style={{
           fontFamily: 'var(--font-body)',
@@ -401,7 +420,7 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site,
         Submit photos of your turtle to help us identify it. The top view is required — side views improve accuracy. Tap any photo area or button to get started.
       </p>
 
-      {/* Cards */}
+      {/* Photo cards */}
       <PhotoCard
         label="Top View"
         tip="Position yourself directly above the turtle"
@@ -426,11 +445,49 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site,
         onImageSelect={setRightImage}
       />
 
-      {/* Other Photos */}
       <OtherPhotosCard
         images={otherImages}
         onImagesChange={setOtherImages}
       />
+
+      {/* Error display */}
+      {mutation.isError && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-text-error, #ef4444)',
+            padding: '1rem',
+          }}
+        >
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error, #ef4444)', fontSize: '0.85rem', margin: 0 }}>
+            {mutation.error instanceof Error ? mutation.error.message : 'An error occurred. Please try again.'}
+          </p>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {mutation.isPending && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.75rem',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Identifying your turtle...
+          </span>
+        </div>
+      )}
 
       {/* Identify button */}
       <button
@@ -449,14 +506,12 @@ export function InstructionPage({ onBack, onIdentify, siteName: _siteName, site,
         }}
         onMouseEnter={() => identifyEnabled && setIdentifyHovered(true)}
         onMouseLeave={() => setIdentifyHovered(false)}
-        onClick={() => {
-          if (!identifyEnabled || !topImage) return;
-          onIdentify({ top: topImage, left: leftImage, right: rightImage, other: otherImages.map((item) => item.file) });
-        }}
+        onClick={() => mutation.mutate()}
       >
         Identify My Turtle
       </button>
-      <Footer onAbout={onAbout} />
+
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }

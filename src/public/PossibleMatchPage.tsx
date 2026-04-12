@@ -1,60 +1,37 @@
-// src/pages/PossibleMatchPage.tsx
-import { useEffect, useState } from 'react';
-import { fetchTurtleByNickname, type TurtleRecord } from '../services/airtable';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
+// src/public/PossibleMatchPage.tsx
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSite } from '../shared/context/SiteContext';
+import { imageUrl } from '../shared/lib/api';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
+import ConfidenceBadge from '../shared/components/ConfidenceBadge';
+import type { SubmissionCandidate } from '../shared/types';
 
-export type Confidence = 'high' | 'medium' | 'low';
-
-export interface CandidateTurtle {
-  turtleNickname: string;
-  confidence: Confidence;
+interface LocationState {
+  submissionId: string;
+  candidates: SubmissionCandidate[];
+  processingTimeMs: number;
+  totalCompared: number;
+  photos: {
+    top: File;
+    left: File | null;
+    right: File | null;
+    other: File[];
+  };
 }
-
-interface PossibleMatchPageProps {
-  candidates: CandidateTurtle[];
-  onBack: () => void;
-  onSelectCandidate: (turtleNickname: string) => void;
-  onNoMatch: () => void;
-  onAbout: () => void;
-  siteName: string;
-  site: Site;
-  onWelcome: () => void;
-}
-
-type CardState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'loaded'; turtle: TurtleRecord };
-
-const CONFIDENCE_COLORS: Record<Confidence, string> = {
-  high: 'var(--color-text-secondary)',
-  medium: 'var(--color-text-dev)',
-  low: 'var(--color-text-muted)',
-};
 
 function CandidateCard({
   candidate,
+  onViewProfile,
   onSelect,
 }: {
-  candidate: CandidateTurtle;
+  candidate: SubmissionCandidate;
+  onViewProfile: () => void;
   onSelect: () => void;
 }) {
-  const [cardState, setCardState] = useState<CardState>({ status: 'loading' });
   const [selectHovered, setSelectHovered] = useState(false);
-
-  useEffect(() => {
-    fetchTurtleByNickname(candidate.turtleNickname)
-      .then(turtle => {
-        if (turtle) setCardState({ status: 'loaded', turtle });
-        else setCardState({ status: 'error' });
-      })
-      .catch(() => setCardState({ status: 'error' }));
-  }, [candidate.turtleNickname]);
-
-  const badgeColor = CONFIDENCE_COLORS[candidate.confidence];
-  const badgeLabel = candidate.confidence.charAt(0).toUpperCase() + candidate.confidence.slice(1);
+  const thumbSrc = imageUrl(candidate.thumbnail_url);
 
   return (
     <div
@@ -64,24 +41,16 @@ function CandidateCard({
         overflow: 'hidden',
       }}
     >
-      {/* Photo */}
-      {cardState.status === 'loading' && (
-        <div
-          style={{
-            width: '100%',
-            aspectRatio: '16/9',
-            backgroundColor: 'var(--color-bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.7rem', letterSpacing: '0.2em' }}>
-            Loading...
-          </span>
+      {/* Thumbnail */}
+      {thumbSrc ? (
+        <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden' }}>
+          <img
+            src={thumbSrc}
+            alt={`${candidate.turtle_nickname ?? 'Turtle'} carapace`}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
         </div>
-      )}
-      {cardState.status === 'error' && (
+      ) : (
         <div
           style={{
             width: '100%',
@@ -97,19 +66,9 @@ function CandidateCard({
           </span>
         </div>
       )}
-      {cardState.status === 'loaded' && cardState.turtle.carapaceTop[0] && (
-        <div style={{ width: '100%', aspectRatio: '16/9', overflow: 'hidden' }}>
-          <img
-            src={cardState.turtle.carapaceTop[0].url}
-            alt={`${candidate.turtleNickname} carapace top`}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        </div>
-      )}
 
       {/* Card body */}
       <div className="flex flex-col gap-3" style={{ padding: '1rem' }}>
-        {/* Nickname + badge */}
         <div className="flex items-center justify-between">
           <span
             style={{
@@ -120,27 +79,15 @@ function CandidateCard({
               letterSpacing: '0.03em',
             }}
           >
-            {candidate.turtleNickname}
+            {candidate.turtle_nickname ?? `Turtle #${candidate.turtle_id}`}
           </span>
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: badgeColor,
-              fontSize: '0.65rem',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              border: `1px solid ${badgeColor}`,
-              padding: '0.2rem 0.5rem',
-            }}
-          >
-            {badgeLabel}
-          </span>
+          <ConfidenceBadge confidence={candidate.confidence} score={candidate.score} />
         </div>
 
-        {/* Actions */}
+        {/* View Profile link */}
         <button
           type="button"
-          onClick={onSelect}
+          onClick={onViewProfile}
           style={{
             background: 'none',
             border: 'none',
@@ -154,9 +101,10 @@ function CandidateCard({
             textTransform: 'uppercase',
           }}
         >
-          View Full Profile →
+          View Full Profile
         </button>
 
+        {/* This Is Mine button */}
         <button
           type="button"
           className="w-full py-3 text-sm uppercase border transition-all duration-300"
@@ -178,30 +126,39 @@ function CandidateCard({
   );
 }
 
-export function PossibleMatchPage({
-  candidates,
-  onBack,
-  onSelectCandidate,
-  onNoMatch,
-  onAbout,
-  siteName: _siteName,
-  site,
-  onWelcome,
-}: PossibleMatchPageProps) {
+export function PossibleMatchPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { site } = useSite();
   const [noMatchHovered, setNoMatchHovered] = useState(false);
+
+  const state = location.state as LocationState | null;
+
+  if (!site) {
+    navigate('/');
+    return null;
+  }
+
+  if (!state?.candidates) {
+    navigate('/instructions');
+    return null;
+  }
+
+  const { submissionId, candidates, photos } = state;
 
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-6"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={onWelcome} />
+      <SiteBand site={site} onWelcome={() => navigate('/')} />
+
       {/* Header */}
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => navigate('/instructions')}
             style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             aria-label="Go back"
           >
@@ -235,16 +192,34 @@ export function PossibleMatchPage({
 
       {/* Candidate cards */}
       <div className="flex flex-col gap-4">
-        {candidates.map(candidate => (
+        {candidates.map((candidate) => (
           <CandidateCard
-            key={candidate.turtleNickname}
+            key={candidate.turtle_id}
             candidate={candidate}
-            onSelect={() => onSelectCandidate(candidate.turtleNickname)}
+            onViewProfile={() =>
+              navigate(`/results/${candidate.turtle_id}`, {
+                state: {
+                  submissionId,
+                  candidate,
+                  candidates,
+                  photos,
+                },
+              })
+            }
+            onSelect={() =>
+              navigate('/encounter', {
+                state: {
+                  submissionId,
+                  turtleId: candidate.turtle_id,
+                  turtleNickname: candidate.turtle_nickname ?? `Turtle #${candidate.turtle_id}`,
+                },
+              })
+            }
           />
         ))}
       </div>
 
-      {/* Footer */}
+      {/* None of these */}
       <div className="mt-4 mb-8">
         <button
           type="button"
@@ -258,12 +233,17 @@ export function PossibleMatchPage({
           }}
           onMouseEnter={() => setNoMatchHovered(true)}
           onMouseLeave={() => setNoMatchHovered(false)}
-          onClick={onNoMatch}
+          onClick={() =>
+            navigate('/results/no-match', {
+              state: { submissionId, photos },
+            })
+          }
         >
           None of these are my turtle
         </button>
       </div>
-      <Footer onAbout={onAbout} />
+
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }

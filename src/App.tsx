@@ -1,215 +1,67 @@
-// src/App.tsx
-import { useState } from 'react';
-import { WelcomePage } from './pages/WelcomePage';
-import { InstructionPage } from './pages/InstructionPage';
-import type { SubmittedPhotos } from './pages/InstructionPage';
-import { MatchProfilePage } from './pages/MatchProfilePage';
-import { PossibleMatchPage, type CandidateTurtle } from './pages/PossibleMatchPage';
-import { DevRoutingModal } from './components/DevRoutingModal';
-import { NoMatchPage } from './pages/NoMatchPage';
-import { NewTurtleSubmissionPage } from './pages/NewTurtleSubmissionPage';
-import { AboutPage } from './pages/AboutPage';
-import { MatchEncounterPage } from './pages/MatchEncounterPage';
-import { ThankYouPage } from './pages/ThankYouPage';
+import { lazy, Suspense } from 'react';
+import { Routes, Route } from 'react-router-dom';
 
-type Page = 'welcome' | 'instructions' | 'match' | 'possible-match' | 'no-match' | 'new-turtle' | 'about' | 'match-encounter' | 'thank-you';
+import WelcomePage from './public/WelcomePage';
+import InstructionPage from './public/InstructionPage';
+import PossibleMatchPage from './public/PossibleMatchPage';
+import MatchProfilePage from './public/MatchProfilePage';
+import MatchEncounterPage from './public/MatchEncounterPage';
+import NoMatchPage from './public/NoMatchPage';
+import NewTurtleSubmissionPage from './public/NewTurtleSubmissionPage';
+import ThankYouPage from './public/ThankYouPage';
+import AboutPage from './public/AboutPage';
 
-export type Site = 'patuxent' | 'wallkill';
+// Lazy-load admin routes
+const AdminDashboard = lazy(() => import('./admin/Dashboard'));
+const AdminCompare = lazy(() => import('./admin/Compare'));
+const AdminSearch = lazy(() => import('./admin/Search'));
+const AdminTurtleProfile = lazy(() => import('./admin/TurtleProfile'));
+const AdminSettings = lazy(() => import('./admin/Settings'));
+const AdminSync = lazy(() => import('./admin/Sync'));
 
-const SITE_NAMES: Record<Site, string> = {
-  patuxent: 'Patuxent Research Refuge',
-  wallkill: 'Wallkill Valley Land Trust',
-};
-
-// Hardcoded candidates for demo — replace with algorithm output when ready
-const DEMO_CANDIDATES: CandidateTurtle[] = [
-  { turtleNickname: 'T106', confidence: 'high' },
-  { turtleNickname: 'T107', confidence: 'medium' },
-  { turtleNickname: 'T108', confidence: 'low' },
-];
-
-function App() {
-  const [page, setPage] = useState<Page>('welcome');
-  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
-  const [selectedSite, setSelectedSite] = useState<Site | null>(null);
-  const [showDevModal, setShowDevModal] = useState(false);
-  const [submittedPhotos, setSubmittedPhotos] = useState<SubmittedPhotos | null>(null);
-  const [returnPage, setReturnPage] = useState<Page>('welcome');
-  const [confirmedTurtle, setConfirmedTurtle] = useState<string | null>(null);
-
-  const siteName = selectedSite ? SITE_NAMES[selectedSite] : '';
-
-  const handleAbout = () => {
-    setReturnPage(page);
-    setPage('about');
-  };
-
-  const handleWelcome = () => {
-    setSelectedCandidate(null);
-    setConfirmedTurtle(null);
-    setPage('welcome');
-  };
-
-  if (page === 'about') {
-    return <AboutPage onBack={() => setPage(returnPage)} />;
-  }
-
-  if (page === 'match') {
-    const matchNickname = 'T106'; // TODO: replace with real match result
-    return (
-      <MatchProfilePage
-        turtleNickname={matchNickname}
-        onBack={() => setPage('instructions')}
-        onConfirm={() => { setConfirmedTurtle(matchNickname); setPage('match-encounter'); }}
-        onNotMyTurtle={() => setPage('instructions')}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        siteName={siteName}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'possible-match') {
-    if (selectedCandidate) {
-      return (
-        <MatchProfilePage
-          turtleNickname={selectedCandidate}
-          onBack={() => setSelectedCandidate(null)}
-          onConfirm={() => { setConfirmedTurtle(selectedCandidate); setPage('match-encounter'); }}
-          onNotMyTurtle={() => setSelectedCandidate(null)}
-          onAbout={handleAbout}
-          onWelcome={handleWelcome}
-          siteName={siteName}
-          site={selectedSite!}
-        />
-      );
-    }
-    return (
-      <PossibleMatchPage
-        candidates={DEMO_CANDIDATES}
-        onBack={() => setPage('instructions')}
-        onSelectCandidate={(nickname) => setSelectedCandidate(nickname)}
-        onNoMatch={() => setPage('no-match')}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        siteName={siteName}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'new-turtle') {
-    return (
-      <NewTurtleSubmissionPage
-        photos={submittedPhotos}
-        onBack={() => setPage('no-match')}
-        onSubmitted={() => setPage('thank-you')}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        siteName={siteName}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'match-encounter') {
-    return (
-      <MatchEncounterPage
-        // confirmedTurtle is always set by onConfirm before this page renders
-        turtleNickname={confirmedTurtle!}
-        onBack={() => {
-          if (selectedCandidate) {
-            setPage('possible-match');
-          } else {
-            setPage('match');
-          }
-        }}
-        onSubmitted={() => setPage('thank-you')}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        siteName={siteName}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'thank-you') {
-    return (
-      <ThankYouPage
-        onDone={() => {
-          setSelectedCandidate(null);
-          setConfirmedTurtle(null);
-          setPage('instructions');
-        }}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'no-match') {
-    return (
-      <NoMatchPage
-        onRetakePhotos={() => setPage('instructions')}
-        onSubmitNewTurtle={() => setPage('new-turtle')}
-        onAbout={handleAbout}
-        onWelcome={handleWelcome}
-        siteName={siteName}
-        site={selectedSite!}
-      />
-    );
-  }
-
-  if (page === 'instructions') {
-    return (
-      <>
-        <InstructionPage
-          onBack={() => setPage('welcome')}
-          onIdentify={(photos) => {
-            setSubmittedPhotos(photos);
-            if (import.meta.env.DEV) {
-              setShowDevModal(true);
-            } else {
-              setPage('possible-match');
-            }
-          }}
-          siteName={siteName}
-          site={selectedSite!}
-          onAbout={handleAbout}
-          onWelcome={handleWelcome}
-        />
-        {import.meta.env.DEV && showDevModal && (
-          <DevRoutingModal
-            onConfirmedMatch={() => {
-              setShowDevModal(false);
-              setPage('match');
-            }}
-            onPossibleMatch={() => {
-              setShowDevModal(false);
-              setPage('possible-match');
-            }}
-            onNoMatch={() => {
-              setShowDevModal(false);
-              setPage('no-match');
-            }}
-            onDismiss={() => setShowDevModal(false)}
-          />
-        )}
-      </>
-    );
-  }
-
-  return (
-    <WelcomePage
-      onSelectSite={(site) => {
-        setSelectedSite(site);
-        setPage('instructions');
-      }}
-      onAbout={handleAbout}
-    />
-  );
+function AdminFallback() {
+  return <div className="p-8 text-gray-500">Loading...</div>;
 }
 
-export default App;
+export default function App() {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={<WelcomePage />} />
+      <Route path="/instructions" element={<InstructionPage />} />
+      <Route path="/results" element={<PossibleMatchPage />} />
+      <Route path="/results/no-match" element={<NoMatchPage />} />
+      <Route path="/results/new-turtle" element={<NewTurtleSubmissionPage />} />
+      <Route path="/results/:turtleId" element={<MatchProfilePage />} />
+      <Route path="/encounter" element={<MatchEncounterPage />} />
+      <Route path="/thank-you" element={<ThankYouPage />} />
+      <Route path="/about" element={<AboutPage />} />
+
+      {/* Admin routes (lazy-loaded) */}
+      <Route
+        path="/admin"
+        element={<Suspense fallback={<AdminFallback />}><AdminDashboard /></Suspense>}
+      />
+      <Route
+        path="/admin/compare"
+        element={<Suspense fallback={<AdminFallback />}><AdminCompare /></Suspense>}
+      />
+      <Route
+        path="/admin/search"
+        element={<Suspense fallback={<AdminFallback />}><AdminSearch /></Suspense>}
+      />
+      <Route
+        path="/admin/turtles/:id"
+        element={<Suspense fallback={<AdminFallback />}><AdminTurtleProfile /></Suspense>}
+      />
+      <Route
+        path="/admin/settings"
+        element={<Suspense fallback={<AdminFallback />}><AdminSettings /></Suspense>}
+      />
+      <Route
+        path="/admin/sync"
+        element={<Suspense fallback={<AdminFallback />}><AdminSync /></Suspense>}
+      />
+    </Routes>
+  );
+}

@@ -1,45 +1,24 @@
-// src/pages/MatchProfilePage.tsx
-import { useEffect, useState } from 'react';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
-import {
-  fetchTurtleByNickname,
-  fetchEncountersForTurtle,
-  type TurtleRecord,
-} from '../services/airtable';
-import turtleTop from '../assets/turtle-top-view.jpg';
-import turtleLeft from '../assets/turtle-left-side.jpg';
-import turtleRight from '../assets/turtle-right-side.jpg';
+// src/public/MatchProfilePage.tsx
+import { useState } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useSite } from '../shared/context/SiteContext';
+import { fetchTurtle, fetchEncounters, imageUrl } from '../shared/lib/api';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
+import type { SubmissionCandidate, CaptureResponse } from '../shared/types';
 
-const DEFAULT_TURTLE_ID = 'T106';
-
-const DEV_MOCK_TURTLE: TurtleRecord = {
-  airtableId: 'mock',
-  nickname: 'T106',
-  gender: 'Female',
-  dateFirstIdentified: '2021-06-15',
-  carapaceTop: [{ id: 'mock-top', url: turtleTop, filename: 'turtle-top-view.jpg' }],
-  carapaceLeft: [{ id: 'mock-left', url: turtleLeft, filename: 'turtle-left-side.jpg' }],
-  carapaceRight: [{ id: 'mock-right', url: turtleRight, filename: 'turtle-right-side.jpg' }],
-  notes: 'Mock turtle for dev — Airtable unavailable.',
-};
-
-interface MatchProfilePageProps {
-  onBack: () => void;
-  onConfirm: () => void;
-  onNotMyTurtle: () => void;
-  onAbout: () => void;
-  turtleNickname?: string;
-  siteName?: string;
-  site: Site;
-  onWelcome: () => void;
+interface LocationState {
+  submissionId: string;
+  candidate: SubmissionCandidate;
+  candidates: SubmissionCandidate[];
+  photos: {
+    top: File;
+    left: File | null;
+    right: File | null;
+    other: File[];
+  };
 }
-
-type PageState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'loaded'; turtle: TurtleRecord; encounterCount: number; lastEncounter: string | null };
 
 function StatChip({ label, value }: { label: string; value: string }) {
   return (
@@ -69,95 +48,105 @@ function StatChip({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MatchProfilePage({
-  onBack,
-  onConfirm,
-  onNotMyTurtle,
-  onAbout,
-  turtleNickname = DEFAULT_TURTLE_ID,
-  siteName: _siteName = '',
-  site,
-  onWelcome,
-}: MatchProfilePageProps) {
-  const [state, setState] = useState<PageState>({ status: 'loading' });
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '\u2014';
+  try {
+    return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return d;
+  }
+}
+
+function capturesByType(captures: CaptureResponse[]): Record<string, CaptureResponse[]> {
+  const grouped: Record<string, CaptureResponse[]> = {};
+  for (const c of captures) {
+    const key = c.image_type;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(c);
+  }
+  return grouped;
+}
+
+export function MatchProfilePage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { turtleId } = useParams<{ turtleId: string }>();
+  const { site } = useSite();
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [notMyTurtleHovered, setNotMyTurtleHovered] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const turtle = await fetchTurtleByNickname(turtleNickname);
-        if (!turtle) {
-          setState({ status: 'error', message: `Turtle "${turtleNickname}" not found.` });
-          return;
-        }
-        const encounters = await fetchEncountersForTurtle(turtle.airtableId);
-        const encounterCount = encounters.length;
-        const dates = encounters.map(e => e.date).filter(Boolean).sort();
-        const lastEncounter = dates.length ? dates[dates.length - 1] : null;
-        setState({ status: 'loaded', turtle, encounterCount, lastEncounter });
-      } catch (err: any) {
-        if (import.meta.env.DEV) {
-          setState({ status: 'loaded', turtle: DEV_MOCK_TURTLE, encounterCount: 3, lastEncounter: '2024-08-10' });
-        } else {
-          setState({ status: 'error', message: err.message ?? 'Failed to load turtle data.' });
-        }
-      }
-    }
-    load();
-  }, [turtleNickname]);
+  const state = location.state as LocationState | null;
+  const id = Number(turtleId);
 
-  const formatDate = (d: string) => {
-    if (!d) return '—';
-    try {
-      return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch {
-      return d;
-    }
-  };
+  const turtleQuery = useQuery({
+    queryKey: ['turtle', id],
+    queryFn: () => fetchTurtle(id),
+    enabled: !isNaN(id),
+  });
 
-  if (state.status === 'loading') {
+  const encountersQuery = useQuery({
+    queryKey: ['encounters', id],
+    queryFn: () => fetchEncounters(id),
+    enabled: !isNaN(id),
+  });
+
+  if (!site) {
+    navigate('/');
+    return null;
+  }
+
+  if (turtleQuery.isLoading) {
     return (
       <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} onWelcome={onWelcome} />
+        <SiteBand site={site} onWelcome={() => navigate('/')} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-          Identifying...
+          Loading...
         </span>
       </div>
     );
   }
 
-  if (state.status === 'error') {
+  if (turtleQuery.isError || !turtleQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} onWelcome={onWelcome} />
+        <SiteBand site={site} onWelcome={() => navigate('/')} />
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error)', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
-          Error: {state.message}
+          Error: {turtleQuery.error instanceof Error ? turtleQuery.error.message : 'Failed to load turtle data.'}
         </span>
-        <button onClick={onBack} style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', background: 'none', border: '1px solid var(--color-border-action)', cursor: 'pointer', fontSize: '0.75rem', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '0.75rem 1.5rem' }}>
-          ← Go Back
+        <button
+          onClick={() => navigate(-1)}
+          style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', background: 'none', border: '1px solid var(--color-border-action)', cursor: 'pointer', fontSize: '0.75rem', letterSpacing: '0.2em', textTransform: 'uppercase', padding: '0.75rem 1.5rem' }}
+        >
+          Go Back
         </button>
       </div>
     );
   }
 
-  const { turtle, encounterCount, lastEncounter } = state;
-  const topPhoto = turtle.carapaceTop[0]?.url;
-  const leftPhoto = turtle.carapaceLeft[0]?.url;
-  const rightPhoto = turtle.carapaceRight[0]?.url;
+  const turtle = turtleQuery.data;
+  const encounters = encountersQuery.data ?? [];
+  const encounterCount = encounters.length;
+  const grouped = capturesByType(turtle.captures);
+  const topCapture = grouped['carapace_top']?.[0];
+  const leftCapture = grouped['carapace_left']?.[0];
+  const rightCapture = grouped['carapace_right']?.[0];
+
+  const candidate = state?.candidate ?? null;
+  const visualizationSrc = candidate?.visualization_url ? imageUrl(candidate.visualization_url) : null;
 
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={onWelcome} />
+      <SiteBand site={site} onWelcome={() => navigate('/')} />
+
       {/* Header */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             aria-label="Go back"
           >
@@ -174,7 +163,7 @@ export function MatchProfilePage({
               textTransform: 'uppercase',
             }}
           >
-            We found your turtle
+            Turtle profile
           </p>
         </div>
         <h1
@@ -187,47 +176,62 @@ export function MatchProfilePage({
             lineHeight: 1.1,
           }}
         >
-          {turtle.nickname}
+          {turtle.name ?? turtle.external_id}
         </h1>
       </div>
 
       {/* Photo gallery */}
       <div className="flex flex-col gap-2">
-        {topPhoto && (
+        {topCapture && (
           <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden' }}>
-            <img src={topPhoto} alt="Carapace top" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={imageUrl(topCapture.image_path)} alt="Carapace top" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         )}
         <div className="flex gap-2">
-          {leftPhoto && (
+          {leftCapture && (
             <div style={{ flex: 1, aspectRatio: '1/1', overflow: 'hidden' }}>
-              <img src={leftPhoto} alt="Carapace left" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={imageUrl(leftCapture.image_path)} alt="Carapace left" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
-          {rightPhoto && (
+          {rightCapture && (
             <div style={{ flex: 1, aspectRatio: '1/1', overflow: 'hidden' }}>
-              <img src={rightPhoto} alt="Carapace right" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={imageUrl(rightCapture.image_path)} alt="Carapace right" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
         </div>
       </div>
+
+      {/* SIFT visualization */}
+      {visualizationSrc && (
+        <div className="flex flex-col gap-2">
+          <span
+            style={{
+              fontFamily: 'var(--font-body)',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.65rem',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Match Visualization
+          </span>
+          <div style={{ width: '100%', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+            <img src={visualizationSrc} alt="SIFT match visualization" style={{ width: '100%', display: 'block' }} />
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div
         className="flex justify-between"
         style={{ borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', paddingTop: '1rem', paddingBottom: '1rem' }}
       >
-        <StatChip label="Gender" value={turtle.gender || '—'} />
-        <StatChip label="First Seen" value={formatDate(turtle.dateFirstIdentified)} />
+        <StatChip label="Gender" value={turtle.gender ?? '\u2014'} />
+        <StatChip label="First Seen" value={formatDate(turtle.first_seen)} />
         <StatChip label="Encounters" value={String(encounterCount)} />
       </div>
-      {lastEncounter && (
-        <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', fontSize: '0.7rem', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: '-1.5rem' }}>
-          Last seen {formatDate(lastEncounter)}
-        </p>
-      )}
 
-      {/* Turtle notes */}
+      {/* Notes */}
       {turtle.notes && (
         <div
           style={{
@@ -257,7 +261,15 @@ export function MatchProfilePage({
           }}
           onMouseEnter={() => setConfirmHovered(true)}
           onMouseLeave={() => setConfirmHovered(false)}
-          onClick={onConfirm}
+          onClick={() =>
+            navigate('/encounter', {
+              state: {
+                submissionId: state?.submissionId,
+                turtleId: turtle.id,
+                turtleNickname: turtle.name ?? turtle.external_id,
+              },
+            })
+          }
         >
           This Is My Turtle
         </button>
@@ -274,13 +286,13 @@ export function MatchProfilePage({
           }}
           onMouseEnter={() => setNotMyTurtleHovered(true)}
           onMouseLeave={() => setNotMyTurtleHovered(false)}
-          onClick={onNotMyTurtle}
+          onClick={() => navigate(-1)}
         >
           Not My Turtle
         </button>
       </div>
 
-      <Footer onAbout={onAbout} />
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }

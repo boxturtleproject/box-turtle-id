@@ -1,8 +1,5 @@
-// src/pages/AboutPage.tsx
-
-interface AboutPageProps {
-  onBack: () => void;
-}
+// src/public/AboutPage.tsx
+import { useNavigate } from 'react-router-dom';
 
 const paraStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
@@ -13,7 +10,9 @@ const paraStyle: React.CSSProperties = {
   margin: 0,
 };
 
-export function AboutPage({ onBack }: AboutPageProps) {
+export function AboutPage() {
+  const navigate = useNavigate();
+
   return (
     <div
       className="flex flex-col w-full px-8 pb-10 pt-16 gap-8"
@@ -23,7 +22,7 @@ export function AboutPage({ onBack }: AboutPageProps) {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => navigate(-1)}
           style={{
             color: 'var(--color-text-secondary)',
             background: 'none',

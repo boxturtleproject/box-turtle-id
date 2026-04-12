@@ -1,38 +1,51 @@
-// src/pages/MatchEncounterPage.tsx
+// src/public/MatchEncounterPage.tsx
 import { useState } from 'react';
-import type { Site } from '../App';
-import { SiteBand } from '../components/SiteBand';
-import { Footer } from '../components/Footer';
-import { EncounterForm, defaultEncounterFormData } from '../components/EncounterForm';
-import type { EncounterFormData } from '../components/EncounterForm';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useSite } from '../shared/context/SiteContext';
+import { confirmMatch } from '../shared/lib/api';
+import { SiteBand } from '../shared/components/SiteBand';
+import { Footer } from '../shared/components/Footer';
+import { EncounterForm, defaultEncounterFormData } from '../shared/components/EncounterForm';
+import type { EncounterFormData } from '../shared/components/EncounterForm';
 
-interface MatchEncounterPageProps {
+interface LocationState {
+  submissionId: string;
+  turtleId: number;
   turtleNickname: string;
-  onBack: () => void;
-  onSubmitted: () => void;
-  onAbout: () => void;
-  siteName?: string;
-  site: Site;
-  onWelcome: () => void;
 }
 
-export function MatchEncounterPage({
-  turtleNickname,
-  onBack,
-  onSubmitted,
-  onAbout,
-  siteName: _siteName = '',
-  site,
-  onWelcome,
-}: MatchEncounterPageProps) {
+export function MatchEncounterPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { site } = useSite();
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
-  function handleSubmit() {
-    console.log('Encounter submitted:', turtleNickname, encounterData);
-    onSubmitted();
+  const state = location.state as LocationState | null;
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      if (!state) throw new Error('Missing submission data');
+      return confirmMatch(state.submissionId, state.turtleId, encounterData);
+    },
+    onSuccess: () => {
+      navigate('/thank-you');
+    },
+  });
+
+  if (!site) {
+    navigate('/');
+    return null;
   }
+
+  if (!state) {
+    navigate('/instructions');
+    return null;
+  }
+
+  const { turtleNickname } = state;
 
   return (
     <div
@@ -46,7 +59,7 @@ export function MatchEncounterPage({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             style={{ color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
             aria-label="Go back"
           >
@@ -83,9 +96,25 @@ export function MatchEncounterPage({
       {/* Encounter form */}
       <EncounterForm value={encounterData} onChange={setEncounterData} />
 
+      {/* Error */}
+      {mutation.isError && (
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-text-error, #ef4444)',
+            padding: '1rem',
+          }}
+        >
+          <p style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error, #ef4444)', fontSize: '0.85rem', margin: 0 }}>
+            {mutation.error instanceof Error ? mutation.error.message : 'An error occurred. Please try again.'}
+          </p>
+        </div>
+      )}
+
       {/* Submit button */}
       <button
         type="button"
+        disabled={mutation.isPending}
         className="w-full py-4 text-sm uppercase transition-all duration-300"
         style={{
           fontFamily: 'var(--font-body)',
@@ -93,16 +122,17 @@ export function MatchEncounterPage({
           color: 'var(--color-btn-primary-text)',
           backgroundColor: submitHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
           border: 'none',
-          cursor: 'pointer',
+          cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+          opacity: mutation.isPending ? 0.7 : 1,
         }}
         onMouseEnter={() => setSubmitHovered(true)}
         onMouseLeave={() => setSubmitHovered(false)}
-        onClick={handleSubmit}
+        onClick={() => mutation.mutate()}
       >
-        Submit Observation
+        {mutation.isPending ? 'Submitting...' : 'Submit Observation'}
       </button>
 
-      <Footer onAbout={onAbout} />
+      <Footer onAbout={() => navigate('/about')} />
 
       {/* Leave confirmation modal */}
       {showLeaveConfirm && (
@@ -158,7 +188,7 @@ export function MatchEncounterPage({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button
                 type="button"
-                onClick={onWelcome}
+                onClick={() => navigate('/')}
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: '0.75rem',

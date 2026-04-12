@@ -1,14 +1,16 @@
-// src/pages/WelcomePage.tsx
+// src/public/WelcomePage.tsx
 import { useState } from 'react';
-import type { Site } from '../App';
+import { useNavigate } from 'react-router-dom';
+import { useSite } from '../shared/context/SiteContext';
+import { Footer } from '../shared/components/Footer';
+import type { Site } from '../shared/types';
 import patuxentMap from '../assets/patuxent-map.jpg';
 import wallkillMap from '../assets/wallkill-map.jpg';
-import { Footer } from '../components/Footer';
 
-interface WelcomePageProps {
-  onSelectSite: (site: Site) => void;
-  onAbout: () => void;
-}
+const SITE_COLORS: Record<Site, string> = {
+  patuxent: '#3a7d44',
+  wallkill: '#c8622a',
+};
 
 interface SiteCardProps {
   site: Site;
@@ -17,11 +19,6 @@ interface SiteCardProps {
   mapImage: string;
   onSelect: () => void;
 }
-
-const SITE_COLORS: Record<Site, string> = {
-  patuxent: '#3a7d44',
-  wallkill: '#c8622a',
-};
 
 function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
   const [hovered, setHovered] = useState(false);
@@ -49,7 +46,6 @@ function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
           transition: 'background-color 0.2s',
         }}
       >
-        {/* Map image */}
         <img
           src={mapImage}
           alt={`${name} map`}
@@ -61,8 +57,6 @@ function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
             display: 'block',
           }}
         />
-
-        {/* Card body */}
         <div style={{ padding: '1rem', backgroundColor: siteColor }} className="flex flex-col gap-1">
           <span
             style={{
@@ -92,7 +86,15 @@ function SiteCard({ site, name, location, mapImage, onSelect }: SiteCardProps) {
   );
 }
 
-export function WelcomePage({ onSelectSite, onAbout }: WelcomePageProps) {
+export function WelcomePage() {
+  const navigate = useNavigate();
+  const { setSite } = useSite();
+
+  function handleSelectSite(site: Site) {
+    setSite(site);
+    navigate('/instructions');
+  }
+
   return (
     <div
       className="flex flex-col w-full px-8 py-16 gap-10"
@@ -122,21 +124,21 @@ export function WelcomePage({ onSelectSite, onAbout }: WelcomePageProps) {
         </p>
       </div>
 
-      {/* Site cards — Wallkill first */}
+      {/* Site cards */}
       <div className="flex flex-col gap-4">
         <SiteCard
           site="wallkill"
           name="Wallkill Valley Land Trust"
           location="New York"
           mapImage={wallkillMap}
-          onSelect={() => onSelectSite('wallkill')}
+          onSelect={() => handleSelectSite('wallkill')}
         />
         <SiteCard
           site="patuxent"
           name="Patuxent Research Refuge"
           location="Maryland"
           mapImage={patuxentMap}
-          onSelect={() => onSelectSite('patuxent')}
+          onSelect={() => handleSelectSite('patuxent')}
         />
       </div>
 
@@ -156,7 +158,7 @@ export function WelcomePage({ onSelectSite, onAbout }: WelcomePageProps) {
         and conservation efforts.{' '}
         <button
           type="button"
-          onClick={onAbout}
+          onClick={() => navigate('/about')}
           style={{
             fontFamily: 'var(--font-body)',
             color: 'var(--color-text-secondary)',
@@ -173,8 +175,7 @@ export function WelcomePage({ onSelectSite, onAbout }: WelcomePageProps) {
         </button>
       </p>
 
-      {/* Footer */}
-      <Footer onAbout={onAbout} />
+      <Footer onAbout={() => navigate('/about')} />
     </div>
   );
 }
