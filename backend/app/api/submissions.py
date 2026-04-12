@@ -199,7 +199,7 @@ async def identify(
                 score=round(score, 1),
                 confidence=_score_to_confidence(score),
                 visualization_url=f"/api/visualizations/{viz_filename}",
-                thumbnail_url=capture.thumbnail_path,
+                thumbnail_url=capture.image_path,
             )
         )
 
