@@ -155,5 +155,7 @@ export async function triggerSync(): Promise<SyncResponse> {
 export function imageUrl(path: string | null | undefined): string {
   if (!path) return '';
   if (path.startsWith('http')) return path;
-  return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+  // Backend serves data/ directory at /api/static/
+  if (path.startsWith('/api/')) return `${API_BASE}${path}`;
+  return `${API_BASE}/api/static/${path}`;
 }
