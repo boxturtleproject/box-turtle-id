@@ -33,6 +33,19 @@ async def upload_image(
     return {"status": "ok", "path": path, "size": len(content)}
 
 
+@router.post("/admin/upload-yolo-weights")
+async def upload_yolo_weights(file: UploadFile = File(...)):
+    """Upload YOLO weights file to the data volume for persistence across deploys."""
+    yolo_dir = settings.data_dir / "yolo"
+    yolo_dir.mkdir(parents=True, exist_ok=True)
+    target = yolo_dir / "yolov3_training_1000.weights"
+
+    content = await file.read()
+    target.write_bytes(content)
+
+    return {"status": "ok", "path": str(target), "size": len(content)}
+
+
 @router.get("/admin/list-files")
 async def list_files():
     """List files in the data directory."""
