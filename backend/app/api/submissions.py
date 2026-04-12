@@ -62,7 +62,7 @@ def _score_to_confidence(score: float) -> str:
 @router.post("/submissions/identify", response_model=IdentifyResponse)
 async def identify(
     site: str = Form(...),
-    top: UploadFile = File(...),
+    top: Optional[UploadFile] = File(None),
     left: Optional[UploadFile] = File(None),
     right: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
@@ -70,6 +70,9 @@ async def identify(
     cropper: CropperService = Depends(get_cropper_service),
     image_svc: ImageService = Depends(get_image_service),
 ):
+    if top is None and left is None and right is None:
+        raise HTTPException(status_code=422, detail="At least one photo is required")
+
     start_time = time.time()
     submission_id = str(uuid.uuid4())
 
@@ -77,16 +80,18 @@ async def identify(
     sub_dir = settings.submissions_dir / submission_id
     sub_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save and load top image
-    top_data = await top.read()
-    top_img = image_svc.load_from_bytes(top_data)
-    if top_img is None:
-        raise HTTPException(status_code=400, detail="Failed to load top image")
+    # Save all provided images and collect for SIFT matching
+    query_images = []  # (image, label) pairs for matching
 
-    top_path = sub_dir / "top.jpg"
-    cv2.imwrite(str(top_path), top_img)
+    top_path = None
+    if top is not None:
+        top_data = await top.read()
+        top_img = image_svc.load_from_bytes(top_data)
+        if top_img is not None:
+            top_path = str(sub_dir / "top.jpg")
+            cv2.imwrite(top_path, top_img)
+            query_images.append(top_img)
 
-    # Save optional images
     left_path = None
     if left is not None:
         left_data = await left.read()
@@ -94,6 +99,7 @@ async def identify(
         if left_img is not None:
             left_path = str(sub_dir / "left.jpg")
             cv2.imwrite(left_path, left_img)
+            query_images.append(left_img)
 
     right_path = None
     if right is not None:
@@ -102,23 +108,31 @@ async def identify(
         if right_img is not None:
             right_path = str(sub_dir / "right.jpg")
             cv2.imwrite(right_path, right_img)
+            query_images.append(right_img)
+
+    if not query_images:
+        raise HTTPException(status_code=400, detail="Failed to load any images")
 
     # Create submission record
     submission = Submission(
         id=submission_id,
         site=site,
-        top_image_path=str(top_path),
+        top_image_path=top_path or "",
         left_image_path=left_path,
         right_image_path=right_path,
     )
     db.add(submission)
     db.commit()
 
-    # Preprocess top image for SIFT matching
-    processed = image_svc.preprocess(top_img, crop=True, cropper=cropper)
-    query_features = sift.extract_features(processed)
+    # Extract SIFT features from all submitted images
+    all_query_features = []
+    for img in query_images:
+        processed = image_svc.preprocess(img, crop=True, cropper=cropper)
+        features = sift.extract_features(processed)
+        if features is not None:
+            all_query_features.append(features)
 
-    if query_features is None:
+    if not all_query_features:
         processing_time_ms = int((time.time() - start_time) * 1000)
         return IdentifyResponse(
             candidates=[],
@@ -134,58 +148,60 @@ async def identify(
     )
     captures = captures_query.all()
 
-    # Compare against each capture
+    # Compare all query features against each DB capture, keep best score per turtle
     candidates: list[SubmissionCandidate] = []
-    seen_turtle_ids: set[int] = set()
+    best_scores: dict[int, float] = {}  # turtle_id -> best score
+    best_viz_data: dict[int, tuple] = {}  # turtle_id -> (query_feat, db_feat, capture)
 
     for capture in captures:
         try:
             db_features = SiftFeatures.deserialize(
                 capture.keypoints_data, capture.descriptors_data
             )
-            result = sift.compare(query_features, db_features)
 
-            if result.score < settings.acceptance_threshold:
-                continue
+            # Try each submitted photo against this DB capture
+            for qf in all_query_features:
+                result = sift.compare(qf, db_features)
 
-            # Only keep the best match per turtle
-            if capture.turtle_id in seen_turtle_ids:
-                existing = next(
-                    (c for c in candidates if c.turtle_id == capture.turtle_id), None
-                )
-                if existing and result.score <= existing.score:
+                if result.score < settings.acceptance_threshold:
                     continue
-                candidates = [c for c in candidates if c.turtle_id != capture.turtle_id]
 
-            seen_turtle_ids.add(capture.turtle_id)
-
-            # Get turtle info
-            turtle = db.query(Turtle).filter(Turtle.id == capture.turtle_id).first()
-            turtle_nickname = turtle.name or turtle.external_id if turtle else None
-
-            # Generate visualization
-            viz_filename = f"viz_{uuid.uuid4()}.jpg"
-            viz_dir = settings.data_dir / "thumbnails"
-            viz_dir.mkdir(parents=True, exist_ok=True)
-            db_img = image_svc.load(capture.image_path)
-            if db_img is not None:
-                viz_image = sift.generate_match_visualization(
-                    processed, db_img, query_features, db_features,
-                )
-                cv2.imwrite(str(viz_dir / viz_filename), viz_image)
-
-            candidates.append(
-                SubmissionCandidate(
-                    turtle_id=capture.turtle_id,
-                    turtle_nickname=turtle_nickname,
-                    score=round(result.score, 1),
-                    confidence=_score_to_confidence(result.score),
-                    visualization_url=f"/api/visualizations/{viz_filename}",
-                    thumbnail_url=capture.thumbnail_path,
-                )
-            )
+                tid = capture.turtle_id
+                if tid not in best_scores or result.score > best_scores[tid]:
+                    best_scores[tid] = result.score
+                    best_viz_data[tid] = (qf, db_features, capture)
         except Exception:
             continue
+
+    # Build candidate list from best scores
+    for tid, score in best_scores.items():
+        qf, db_features, capture = best_viz_data[tid]
+
+        turtle = db.query(Turtle).filter(Turtle.id == tid).first()
+        turtle_nickname = turtle.name or turtle.external_id if turtle else None
+
+        # Generate visualization
+        viz_filename = f"viz_{uuid.uuid4()}.jpg"
+        viz_dir = settings.data_dir / "thumbnails"
+        viz_dir.mkdir(parents=True, exist_ok=True)
+        db_img = image_svc.load(capture.image_path)
+        if db_img is not None:
+            query_img = image_svc.preprocess(query_images[0], crop=True, cropper=cropper)
+            viz_image = sift.generate_match_visualization(
+                query_img, db_img, qf, db_features,
+            )
+            cv2.imwrite(str(viz_dir / viz_filename), viz_image)
+
+        candidates.append(
+            SubmissionCandidate(
+                turtle_id=tid,
+                turtle_nickname=turtle_nickname,
+                score=round(score, 1),
+                confidence=_score_to_confidence(score),
+                visualization_url=f"/api/visualizations/{viz_filename}",
+                thumbnail_url=capture.thumbnail_path,
+            )
+        )
 
     # Sort by score descending
     candidates.sort(key=lambda c: c.score, reverse=True)

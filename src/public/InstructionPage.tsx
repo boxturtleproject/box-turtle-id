@@ -334,7 +334,8 @@ export function InstructionPage() {
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!site || !topImage) throw new Error('Missing site or top photo');
+      if (!site) throw new Error('Missing site');
+      if (!topImage && !leftImage && !rightImage) throw new Error('At least one photo is required');
       return submitPhotos(site, {
         top: topImage,
         left: leftImage,
@@ -374,7 +375,8 @@ export function InstructionPage() {
     return null;
   }
 
-  const identifyEnabled = topImage !== null && !mutation.isPending;
+  const hasAnyPhoto = topImage !== null || leftImage !== null || rightImage !== null;
+  const identifyEnabled = hasAnyPhoto && !mutation.isPending;
 
   return (
     <div
@@ -417,7 +419,7 @@ export function InstructionPage() {
           letterSpacing: '0.05em',
         }}
       >
-        Submit photos of your turtle to help us identify it. The top view is required — side views improve accuracy. Tap any photo area or button to get started.
+        Submit photos of your turtle to help us identify it. At least one photo is required — more photos improve accuracy. Tap any photo area or button to get started.
       </p>
 
       {/* Photo cards */}
@@ -425,7 +427,6 @@ export function InstructionPage() {
         label="Top View"
         tip="Position yourself directly above the turtle"
         illustration={turtleTopView}
-        required
         large
         image={topImage}
         onImageSelect={setTopImage}

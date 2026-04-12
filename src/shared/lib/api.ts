@@ -26,11 +26,11 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function submitPhotos(
   site: string,
-  files: { top: File; left?: File | null; right?: File | null },
+  files: { top?: File | null; left?: File | null; right?: File | null },
 ): Promise<IdentifyResponse> {
   const form = new FormData();
   form.append('site', site);
-  form.append('top', files.top);
+  if (files.top) form.append('top', files.top);
   if (files.left) form.append('left', files.left);
   if (files.right) form.append('right', files.right);
   return apiFetch<IdentifyResponse>('/api/submissions/identify', {
