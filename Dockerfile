@@ -24,7 +24,9 @@ COPY . .
 # Install Python dependencies
 RUN cd backend && pip install --no-cache-dir .
 
-# Build frontend
+# Build frontend (Vite bakes VITE_* env vars at build time)
+ARG VITE_MAPBOX_TOKEN
+ENV VITE_MAPBOX_TOKEN=$VITE_MAPBOX_TOKEN
 RUN bun run build
 
 # Create data directories (volume will mount over /app/backend/data)
