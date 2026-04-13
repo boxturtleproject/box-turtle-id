@@ -52,6 +52,8 @@ export async function confirmMatch(
       encounter_data: {
         date: encounterData.date,
         location: encounterData.location,
+        latitude: encounterData.latitude,
+        longitude: encounterData.longitude,
         setting: encounterData.setting,
         conditions: encounterData.conditions,
         behaviors: encounterData.behaviors,
@@ -80,6 +82,8 @@ export async function submitNewTurtle(
       encounter_data: {
         date: encounterData.date,
         location: encounterData.location,
+        latitude: encounterData.latitude,
+        longitude: encounterData.longitude,
         setting: encounterData.setting,
         conditions: encounterData.conditions,
         behaviors: encounterData.behaviors,

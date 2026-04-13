@@ -31,6 +31,8 @@ export interface NewTurtleResponse {
 export interface EncounterFormData {
   date: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   setting: string[];
   conditions: string[];
   behaviors: string[];

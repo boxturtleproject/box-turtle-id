@@ -22,6 +22,8 @@ class IdentifyResponse(BaseModel):
 class EncounterFormData(BaseModel):
     date: str
     location: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     setting: list[str] = []
     conditions: list[str] = []
     behaviors: list[str] = []

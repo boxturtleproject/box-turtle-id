@@ -32,7 +32,24 @@
       "Bash(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate)",
       "Bash(find /Users/claudius/github/box-turtle-id -name .env* -type f)",
       "Bash(find /Users/claudius/github -name *integration* -o -name *design*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(lsof -iTCP -sTCP:LISTEN -P -n)",
+      "Bash(ps:*)",
+      "Bash(ipconfig getifaddr:*)",
+      "Bash(bun run:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(lsof:*)",
+      "Bash(kill -9 47934)",
+      "Bash(docker compose:*)",
+      "Bash(kill -9 48696)",
+      "Bash(.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "Bash(awk 'NR==2 {print $2}')",
+      "Bash(xargs -r kill)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }

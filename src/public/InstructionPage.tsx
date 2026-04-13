@@ -21,9 +21,15 @@ interface PhotoCardProps {
 }
 
 function PhotoCard({ label, tip, illustration, required, large, image, onImageSelect }: PhotoCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const [hovered, setHovered] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
   const previewUrl = image ? URL.createObjectURL(image) : null;
+
+  const openChooser = () => setChooserOpen(true);
+  const pickCamera = () => { setChooserOpen(false); cameraRef.current?.click(); };
+  const pickLibrary = () => { setChooserOpen(false); libraryRef.current?.click(); };
 
   return (
     <div
@@ -57,7 +63,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
       </div>
 
       <div
-        onClick={() => inputRef.current?.click()}
+        onClick={openChooser}
         style={{
           width: '100%',
           aspectRatio: '4/3',
@@ -118,7 +124,7 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
       </p>
 
       <input
-        ref={inputRef}
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -126,6 +132,18 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) onImageSelect(file);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={libraryRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onImageSelect(file);
+          e.target.value = '';
         }}
       />
 
@@ -141,10 +159,151 @@ function PhotoCard({ label, tip, illustration, required, large, image, onImageSe
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={() => inputRef.current?.click()}
+        onClick={openChooser}
       >
         {image ? 'Replace Image' : 'Submit Image'}
       </button>
+
+      {chooserOpen && (
+        <PhotoSourceSheet
+          onCamera={pickCamera}
+          onLibrary={pickLibrary}
+          onCancel={() => setChooserOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface PhotoSourceSheetProps {
+  onCamera: () => void;
+  onLibrary: () => void;
+  onCancel: () => void;
+  multiple?: boolean;
+}
+
+function PhotoSourceSheet({ onCamera, onLibrary, onCancel }: PhotoSourceSheetProps) {
+  const rowStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '1.125rem 1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.875rem',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-body)',
+    color: 'var(--color-text-primary)',
+    fontSize: '1rem',
+    textAlign: 'left',
+  };
+
+  const iconWrap: React.CSSProperties = {
+    width: 28,
+    height: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--color-text-secondary)',
+    flexShrink: 0,
+  };
+
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        zIndex: 1000,
+        animation: 'fadeIn 160ms ease-out',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 480,
+          padding: '0 0.5rem calc(env(safe-area-inset-bottom, 0px) + 0.5rem)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.5rem',
+          animation: 'slideUp 220ms cubic-bezier(0.2, 0.9, 0.3, 1)',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'var(--color-bg)',
+            borderRadius: '14px',
+            overflow: 'hidden',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0 0' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'var(--color-border)' }} />
+          </div>
+          <div
+            style={{
+              padding: '0.75rem 1rem 0.25rem',
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.7rem',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-muted)',
+              textAlign: 'center',
+            }}
+          >
+            Add Photo
+          </div>
+          <button type="button" onClick={onCamera} style={rowStyle}>
+            <span style={iconWrap}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path d="M4 8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <circle cx="12" cy="13" r="3.5" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+            </span>
+            <span>Take Photo</span>
+          </button>
+          <div style={{ height: 1, backgroundColor: 'var(--color-border)', marginLeft: '3.375rem' }} />
+          <button type="button" onClick={onLibrary} style={rowStyle}>
+            <span style={iconWrap}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M3 14l4-4 4 4 3-3 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                <circle cx="8" cy="9" r="1.25" fill="currentColor" />
+                <path d="M7 20h12a2 2 0 0 0 2-2V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </span>
+            <span>Choose from Library</span>
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={{
+            width: '100%',
+            padding: '1.125rem 1rem',
+            backgroundColor: 'var(--color-bg)',
+            border: 'none',
+            borderRadius: '14px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            fontFamily: 'var(--font-body)',
+            fontSize: '1rem',
+            fontWeight: 600,
+            color: 'var(--color-text-primary)',
+            cursor: 'pointer',
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
@@ -160,8 +319,10 @@ interface OtherPhotosCardProps {
 }
 
 function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const [hovered, setHovered] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
   const idCounterRef = useRef(0);
 
   const thumbnailUrls = useMemo(
@@ -295,7 +456,15 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
       )}
 
       <input
-        ref={inputRef}
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleFilesSelected}
+      />
+      <input
+        ref={libraryRef}
         type="file"
         accept="image/*"
         multiple
@@ -315,10 +484,19 @@ function OtherPhotosCard({ images, onImagesChange }: OtherPhotosCardProps) {
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => setChooserOpen(true)}
       >
         + Add Photos
       </button>
+
+      {chooserOpen && (
+        <PhotoSourceSheet
+          multiple
+          onCamera={() => { setChooserOpen(false); cameraRef.current?.click(); }}
+          onLibrary={() => { setChooserOpen(false); libraryRef.current?.click(); }}
+          onCancel={() => setChooserOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -370,10 +548,11 @@ export function InstructionPage() {
     },
   });
 
-  if (!site) {
-    navigate('/');
-    return null;
-  }
+  useEffect(() => {
+    if (!site) navigate('/');
+  }, [site, navigate]);
+
+  if (!site) return null;
 
   const hasAnyPhoto = topImage !== null || leftImage !== null || rightImage !== null;
   const identifyEnabled = hasAnyPhoto && !mutation.isPending;
