@@ -25,6 +25,13 @@ class Turtle(Base):
     gender: Mapped[Optional[str]] = mapped_column(default=None)
     pattern: Mapped[Optional[str]] = mapped_column(default=None)
     carapace_flare: Mapped[Optional[str]] = mapped_column(default=None)
+    nickname: Mapped[Optional[str]] = mapped_column(default=None)
+    health_status: Mapped[Optional[str]] = mapped_column(default=None)
+    residence_status: Mapped[Optional[str]] = mapped_column(default=None)
+    identifying_marks: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    eye_color: Mapped[Optional[str]] = mapped_column(default=None)
+    plastron_depression: Mapped[Optional[str]] = mapped_column(default=None)
+    plots_text: Mapped[Optional[str]] = mapped_column(default=None)
 
     airtable_record_id: Mapped[Optional[str]] = mapped_column(default=None)
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(default=None)
@@ -61,6 +68,9 @@ class Capture(Base):
     keypoints_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, default=None)
     descriptors_data: Mapped[Optional[bytes]] = mapped_column(LargeBinary, default=None)
     keypoint_count: Mapped[int] = mapped_column(default=0)
+    airtable_attachment_id: Mapped[Optional[str]] = mapped_column(default=None, unique=True, index=True)
+    airtable_field_name: Mapped[Optional[str]] = mapped_column(default=None)  # 'Carapace Top', 'Plastron', etc.
+    source: Mapped[str] = mapped_column(default="app")  # 'app' | 'airtable'
 
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(insert_default=func.now())

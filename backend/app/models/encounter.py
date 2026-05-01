@@ -27,6 +27,12 @@ class Encounter(Base):
     setting: Mapped[Optional[str]] = mapped_column(default=None)
     conditions: Mapped[Optional[str]] = mapped_column(default=None)
     notes: Mapped[Optional[str]] = mapped_column(Text, default=None)
+    survey_fk: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("surveys.id", ondelete="SET NULL"), default=None
+    )
+    plot_fk: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("plots.id", ondelete="SET NULL"), default=None
+    )
 
     observer_nickname: Mapped[Optional[str]] = mapped_column(default=None)
     notify_email: Mapped[Optional[str]] = mapped_column(default=None)
