@@ -123,16 +123,21 @@ async def health():
 if FRONTEND_DIR.exists() and (FRONTEND_DIR / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="frontend_assets")
 
+    # index.html references content-hashed asset URLs; serve it with no-cache
+    # so browsers always re-validate and pick up the latest hashes after a deploy.
+    # The hashed /assets/... files themselves remain cacheable indefinitely.
+    INDEX_HEADERS = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+
     @app.get("/")
     async def serve_index():
-        return FileResponse(FRONTEND_DIR / "index.html")
+        return FileResponse(FRONTEND_DIR / "index.html", headers=INDEX_HEADERS)
 
     @app.get("/{path:path}")
     async def serve_frontend(path: str):
         file_path = FRONTEND_DIR / path
         if file_path.is_file():
             return FileResponse(file_path)
-        return FileResponse(FRONTEND_DIR / "index.html")
+        return FileResponse(FRONTEND_DIR / "index.html", headers=INDEX_HEADERS)
 else:
     @app.get("/")
     async def root():
