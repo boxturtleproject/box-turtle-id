@@ -342,6 +342,8 @@ async def confirm_submission(
         turtle_id=turtle.id,
         encounter_date=enc_date,
         plot_name=request.encounter_data.location,
+        latitude=request.encounter_data.latitude,
+        longitude=request.encounter_data.longitude,
         setting=",".join(request.encounter_data.setting),
         conditions=",".join(request.encounter_data.conditions),
         behavior=",".join(request.encounter_data.behaviors),
@@ -406,6 +408,8 @@ async def new_turtle_from_submission(
         turtle_id=turtle.id,
         encounter_date=enc_date,
         plot_name=request.encounter_data.location,
+        latitude=request.encounter_data.latitude,
+        longitude=request.encounter_data.longitude,
         setting=",".join(request.encounter_data.setting),
         conditions=",".join(request.encounter_data.conditions),
         behavior=",".join(request.encounter_data.behaviors),
@@ -443,8 +447,20 @@ def _create_captures_from_submission(
     For each image: saves the original, extracts SIFT features (cropped+resized),
     creates a Capture row, then generates thumb+display derivatives via the
     storage backend (Railway bucket in prod, local /api/static in dev).
+
+    Capture-level latitude/longitude prefer the photo's EXIF GPS (extracted by
+    ImageService.extract_exif when added through /turtles/{id}/captures or the
+    /captures endpoint), and fall back to the form-set encounter coordinates so
+    submissions where the user pinned a location still show up on the map.
     """
     derivatives = DerivativesService(db)
+
+    # Inherit form-pinned location from the encounter as a fallback for any
+    # capture that doesn't carry its own EXIF GPS.
+    encounter = db.query(Encounter).filter(Encounter.id == encounter_id).first()
+    enc_lat = encounter.latitude if encounter else None
+    enc_lng = encounter.longitude if encounter else None
+
     image_map = [
         (submission.top_image_path, "carapace_top", "top.jpg"),
         (submission.left_image_path, "carapace_left", "left.jpg"),
@@ -483,6 +499,8 @@ def _create_captures_from_submission(
             keypoints_data=kp_bytes,
             descriptors_data=desc_bytes,
             keypoint_count=kp_count,
+            latitude=enc_lat,  # encounter pin; EXIF GPS would override later if present
+            longitude=enc_lng,
             source="app",
         )
         db.add(capture)

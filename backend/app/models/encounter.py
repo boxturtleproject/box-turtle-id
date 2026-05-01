@@ -37,6 +37,10 @@ class Encounter(Base):
     observer_nickname: Mapped[Optional[str]] = mapped_column(default=None)
     notify_email: Mapped[Optional[str]] = mapped_column(default=None)
 
+    # Form-captured location (separate from per-photo EXIF coords on captures)
+    latitude: Mapped[Optional[float]] = mapped_column(default=None)
+    longitude: Mapped[Optional[float]] = mapped_column(default=None)
+
     last_synced_at: Mapped[Optional[datetime]] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(insert_default=func.now())
 

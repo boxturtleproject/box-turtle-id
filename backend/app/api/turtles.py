@@ -29,6 +29,54 @@ def get_services():
     return SiftService(), CropperService(), ImageService()
 
 
+@router.get("/captures/locations")
+async def list_capture_locations(
+    turtle_id: Optional[int] = Query(None, description="Restrict to one turtle"),
+    db: Session = Depends(get_db),
+):
+    """Lightweight payload for the map view: every capture that has GPS coords.
+
+    Per row: capture id + turtle id/external_id/name, image_type, captured_date,
+    thumbnail_url, lat, lng. Excludes captures missing either coordinate.
+    """
+    q = (
+        db.query(
+            Capture.id,
+            Capture.turtle_id,
+            Capture.image_type,
+            Capture.captured_date,
+            Capture.latitude,
+            Capture.longitude,
+            Capture.thumbnail_url,
+            Capture.thumbnail_path,
+            Turtle.external_id,
+            Turtle.name,
+            Turtle.site,
+        )
+        .join(Turtle, Capture.turtle_id == Turtle.id)
+        .filter(Capture.latitude.isnot(None))
+        .filter(Capture.longitude.isnot(None))
+    )
+    if turtle_id is not None:
+        q = q.filter(Capture.turtle_id == turtle_id)
+
+    rows = []
+    for r in q.all():
+        rows.append({
+            "id": r[0],
+            "turtle_id": r[1],
+            "image_type": r[2],
+            "captured_date": r[3].isoformat() if r[3] else None,
+            "latitude": r[4],
+            "longitude": r[5],
+            "thumbnail_url": r[6] or (f"/api/static/{r[7]}" if r[7] else None),
+            "turtle_external_id": r[8],
+            "turtle_name": r[9],
+            "site": r[10],
+        })
+    return rows
+
+
 @router.get("/turtles", response_model=list[TurtleResponse])
 async def list_turtles(
     skip: int = Query(0, ge=0),

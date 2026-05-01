@@ -111,6 +111,24 @@ export async function fetchEncounters(turtleId: number): Promise<EncounterRespon
   return apiFetch<EncounterResponse[]>(`/api/turtles/${turtleId}/encounters`);
 }
 
+export interface CaptureLocation {
+  id: number;
+  turtle_id: number;
+  image_type: string;
+  captured_date: string | null;
+  latitude: number;
+  longitude: number;
+  thumbnail_url: string | null;
+  turtle_external_id: string;
+  turtle_name: string | null;
+  site: string | null;
+}
+
+export async function fetchCaptureLocations(turtleId?: number): Promise<CaptureLocation[]> {
+  const qs = turtleId !== undefined ? `?turtle_id=${turtleId}` : '';
+  return apiFetch<CaptureLocation[]>(`/api/captures/locations${qs}`);
+}
+
 // ── Admin endpoints ──
 
 export async function compareTwoImages(

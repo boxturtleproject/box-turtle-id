@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchTurtle, fetchEncounters, imageUrl } from '../shared/lib/api';
 import type { CaptureResponse, EncounterResponse, TurtleResponse } from '../shared/types';
+import { TurtleMap } from './TurtleMap';
 
 const SITE_COLOR: Record<string, string> = {
   patuxent: '#3a7d44',
@@ -114,6 +115,8 @@ export default function TurtleProfile() {
         <Header turtle={turtle} siteColor={siteColor} />
 
         <DetailsBlock turtle={turtle} siteColor={siteColor} />
+
+        <TurtleMap turtleId={turtle.id} accent={siteColor} sectionLabelStyle={SECTION_LABEL} height="480px" />
 
         <CapturesBlock captures={turtle.captures} siteColor={siteColor} />
 

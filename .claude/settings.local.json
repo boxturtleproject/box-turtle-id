@@ -49,7 +49,14 @@
       "Bash(.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000)",
       "Bash(awk 'NR==2 {print $2}')",
       "Bash(xargs -r kill)",
-      "Bash(git commit -m ':*)"
+      "Bash(git commit -m ':*)",
+      "Bash(git rm:*)",
+      "Bash(git commit:*)",
+      "Skill(railway:use-railway)",
+      "Bash(grep -oE 'pk\\\\.eyJ[A-Za-z0-9_-]{10,}')",
+      "Bash(grep -oE 'pk\\\\.eyJ[A-Za-z0-9_.-]{20,}')",
+      "Bash(python3 *)",
+      "Bash(.venv/bin/python *)"
     ]
   }
 }

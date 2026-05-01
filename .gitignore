@@ -27,3 +27,9 @@ dist-ssr
 # Git worktrees
 .claude/worktrees/
 .env.development
+
+# scratch
+*.png
+viz_*.jpg
+locations.csv
+.claude/scheduled_tasks.lock

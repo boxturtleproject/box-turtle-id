@@ -259,7 +259,8 @@ export default function Dashboard() {
           >
             Tools
           </span>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <ActionButton to="/admin/map" label="Map" />
             <ActionButton to="/admin/compare" label="Compare" />
             <ActionButton to="/admin/search" label="Search" />
             <ActionButton to="/admin/settings" label="Settings" />
