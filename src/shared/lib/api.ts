@@ -119,6 +119,7 @@ export async function fetchEncounterDetail(encounterId: number): Promise<Encount
 export interface CaptureLocation {
   id: number;
   turtle_id: number;
+  encounter_id: number | null;
   image_type: string;
   captured_date: string | null;
   latitude: number;

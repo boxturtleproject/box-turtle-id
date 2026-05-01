@@ -18,7 +18,9 @@ interface TurtleMapProps {
   sectionLabelStyle?: React.CSSProperties;
 }
 
-export function TurtleMap({ turtleId, accent, height = '320px', sectionLabelStyle }: TurtleMapProps) {
+export function TurtleMap({
+  turtleId, accent, height = '320px', sectionLabelStyle,
+}: TurtleMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);

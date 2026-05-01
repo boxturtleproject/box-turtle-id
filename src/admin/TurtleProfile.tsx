@@ -78,6 +78,7 @@ export default function TurtleProfile() {
   });
 
   const [encountersOpen, setEncountersOpen] = useState(true);
+  const [encounterFilter, setEncounterFilter] = useState<number | 'all'>('all');
   const { data: encounters, isLoading: encountersLoading } = useQuery({
     queryKey: ['encounters', turtleId],
     queryFn: () => fetchEncounters(turtleId),
@@ -117,9 +118,25 @@ export default function TurtleProfile() {
 
         <DetailsBlock turtle={turtle} siteColor={siteColor} />
 
-        <TurtleMap turtleId={turtle.id} accent={siteColor} sectionLabelStyle={SECTION_LABEL} height="480px" />
+        <TurtleMap
+          turtleId={turtle.id}
+          accent={siteColor}
+          sectionLabelStyle={SECTION_LABEL}
+          height="480px"
+        />
 
-        <CapturesBlock captures={turtle.captures} siteColor={siteColor} />
+        <EncounterFilterBar
+          encounters={encounters}
+          value={encounterFilter}
+          onChange={setEncounterFilter}
+        />
+
+        <CapturesBlock
+          captures={turtle.captures.filter(
+            (c) => encounterFilter === 'all' || c.encounter_id === encounterFilter,
+          )}
+          siteColor={siteColor}
+        />
 
         <EncountersBlock
           encounters={encounters}
@@ -919,6 +936,72 @@ function Badge({ label }: { label: string }) {
     >
       {label}
     </span>
+  );
+}
+
+function EncounterFilterBar({
+  encounters, value, onChange,
+}: {
+  encounters: EncounterResponse[] | undefined;
+  value: number | 'all';
+  onChange: (v: number | 'all') => void;
+}) {
+  if (!encounters || encounters.length === 0) return null;
+
+  function labelFor(enc: EncounterResponse): string {
+    const date = formatDate(enc.encounter_date);
+    return enc.plot_name ? `${date} · ${enc.plot_name}` : date;
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 flex-wrap">
+      <span style={SECTION_LABEL}>
+        Filter by encounter
+        {value !== 'all' && (
+          <button
+            type="button"
+            onClick={() => onChange('all')}
+            style={{
+              ...META_LABEL,
+              marginLeft: '0.625rem',
+              color: 'var(--color-text-muted)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Clear ×
+          </button>
+        )}
+      </span>
+      <select
+        value={value === 'all' ? 'all' : String(value)}
+        onChange={(e) => onChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+        style={{
+          padding: '0.55rem 2rem 0.55rem 0.875rem',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.85rem',
+          color: 'var(--color-text-primary)',
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border-input)',
+          outline: 'none',
+          appearance: 'none',
+          minWidth: '18rem',
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 0.75rem center',
+        }}
+      >
+        <option value="all">All encounters ({encounters.length})</option>
+        {encounters.map((enc) => (
+          <option key={enc.id} value={String(enc.id)}>
+            {labelFor(enc)}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

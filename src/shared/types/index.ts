@@ -81,6 +81,7 @@ export interface TurtleResponse {
 export interface CaptureResponse {
   id: number;
   turtle_id: number | null;
+  encounter_id: number | null;
   image_type: string;
   image_path: string;
   thumbnail_path: string | null;

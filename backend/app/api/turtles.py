@@ -43,6 +43,7 @@ async def list_capture_locations(
         db.query(
             Capture.id,
             Capture.turtle_id,
+            Capture.encounter_id,
             Capture.image_type,
             Capture.captured_date,
             Capture.latitude,
@@ -65,14 +66,15 @@ async def list_capture_locations(
         rows.append({
             "id": r[0],
             "turtle_id": r[1],
-            "image_type": r[2],
-            "captured_date": r[3].isoformat() if r[3] else None,
-            "latitude": r[4],
-            "longitude": r[5],
-            "thumbnail_url": r[6] or (f"/api/static/{r[7]}" if r[7] else None),
-            "turtle_external_id": r[8],
-            "turtle_name": r[9],
-            "site": r[10],
+            "encounter_id": r[2],
+            "image_type": r[3],
+            "captured_date": r[4].isoformat() if r[4] else None,
+            "latitude": r[5],
+            "longitude": r[6],
+            "thumbnail_url": r[7] or (f"/api/static/{r[8]}" if r[8] else None),
+            "turtle_external_id": r[9],
+            "turtle_name": r[10],
+            "site": r[11],
         })
     return rows
 
