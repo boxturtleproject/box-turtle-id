@@ -161,5 +161,7 @@ export function imageUrl(path: string | null | undefined): string {
   if (path.startsWith('http')) return path;
   // Backend serves data/ directory at /api/static/
   if (path.startsWith('/api/')) return `${API_BASE}${path}`;
-  return `${API_BASE}/api/static/${path}`;
+  // Strip a leading "data/" — the static mount already maps to data_dir
+  const key = path.replace(/^data\//, '');
+  return `${API_BASE}/api/static/${key}`;
 }

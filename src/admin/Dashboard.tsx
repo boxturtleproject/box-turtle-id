@@ -8,7 +8,14 @@ function TurtleCard({ turtle }: { turtle: TurtleResponse }) {
   const leftCapture = turtle.captures?.find((c) => c.image_type === 'carapace_left');
   const topCapture = turtle.captures?.find((c) => c.image_type === 'carapace_top');
   const heroCapture = leftCapture ?? topCapture ?? turtle.captures?.[0];
-  const heroSrc = heroCapture ? imageUrl(heroCapture.image_path) : null;
+  const heroSrc = heroCapture
+    ? imageUrl(
+        heroCapture.thumbnail_url ??
+          heroCapture.thumbnail_path ??
+          heroCapture.display_url ??
+          heroCapture.image_path,
+      )
+    : null;
 
   const siteColor = turtle.site === 'patuxent' ? '#3a7d44' : turtle.site === 'wallkill' ? '#c8622a' : '#888';
 

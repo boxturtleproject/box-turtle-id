@@ -74,6 +74,9 @@ export interface CaptureResponse {
   image_type: string;
   image_path: string;
   thumbnail_path: string | null;
+  display_path: string | null;
+  thumbnail_url: string | null;
+  display_url: string | null;
   original_filename: string;
   keypoint_count: number;
 }
