@@ -69,13 +69,21 @@ class TurtleResponse(BaseModel):
     cover_capture_id: Optional[int] = None
 
     # Extended fields from Airtable
+    nickname: Optional[str] = None
     species: Optional[str] = None
     gender: Optional[str] = None
     pattern: Optional[str] = None
     carapace_flare: Optional[str] = None
+    health_status: Optional[str] = None
+    residence_status: Optional[str] = None
+    identifying_marks: Optional[str] = None
+    eye_color: Optional[str] = None
+    plastron_depression: Optional[str] = None
+    plots_text: Optional[str] = None
 
     created_at: datetime
     updated_at: datetime
+    last_synced_at: Optional[datetime] = None
     capture_count: int = 0
     encounter_count: int = 0
     latest_capture: Optional[str] = None
@@ -96,7 +104,10 @@ class EncounterResponse(BaseModel):
     identified: Optional[str] = None
     health_status: Optional[str] = None
     behavior: Optional[str] = None
+    setting: Optional[str] = None
+    conditions: Optional[str] = None
     notes: Optional[str] = None
+    observer_nickname: Optional[str] = None
     created_at: datetime
     capture_count: int = 0
 

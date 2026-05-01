@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { fetchTurtles, imageUrl } from '../shared/lib/api';
@@ -159,9 +159,53 @@ export default function Dashboard() {
     queryFn: fetchTurtles,
   });
 
+  const [search, setSearch] = useState('');
+  const [genderFilter, setGenderFilter] = useState<string>('all');
+  const [patternFilter, setPatternFilter] = useState<string>('all');
+  const [siteFilter, setSiteFilter] = useState<string>('all');
+
   const total = turtles?.length ?? 0;
   const patuxentCount = turtles?.filter((t) => t.site === 'patuxent').length ?? 0;
   const wallkillCount = turtles?.filter((t) => t.site === 'wallkill').length ?? 0;
+
+  const genderOptions = useMemo(
+    () => uniqueValues(turtles, (t) => t.gender),
+    [turtles],
+  );
+  const patternOptions = useMemo(
+    () => uniqueValues(turtles, (t) => t.pattern),
+    [turtles],
+  );
+
+  const filteredTurtles = useMemo(() => {
+    if (!turtles) return [];
+    const q = search.trim().toLowerCase();
+    return turtles.filter((t) => {
+      if (siteFilter !== 'all' && t.site !== siteFilter) return false;
+      if (genderFilter !== 'all' && t.gender !== genderFilter) return false;
+      if (patternFilter !== 'all' && t.pattern !== patternFilter) return false;
+      if (q) {
+        const hay = [t.external_id, t.name, t.nickname]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [turtles, search, genderFilter, patternFilter, siteFilter]);
+
+  const clearFilters = () => {
+    setSearch('');
+    setGenderFilter('all');
+    setPatternFilter('all');
+    setSiteFilter('all');
+  };
+  const filtersActive =
+    search !== '' ||
+    genderFilter !== 'all' ||
+    patternFilter !== 'all' ||
+    siteFilter !== 'all';
 
   return (
     <div
@@ -225,17 +269,72 @@ export default function Dashboard() {
 
         {/* Turtle grid */}
         <div className="flex flex-col gap-3">
-          <span
-            style={{
-              fontFamily: 'var(--font-body)',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.6rem',
-              letterSpacing: '0.22em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Turtles
-          </span>
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <span
+              style={{
+                fontFamily: 'var(--font-body)',
+                color: 'var(--color-text-muted)',
+                fontSize: '0.6rem',
+                letterSpacing: '0.22em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Turtles
+              {turtles && (
+                <span style={{ marginLeft: '0.625rem', color: 'var(--color-text-secondary)' }}>
+                  ({filteredTurtles.length}
+                  {filtersActive && filteredTurtles.length !== turtles.length
+                    ? ` of ${turtles.length}`
+                    : ''}
+                  )
+                </span>
+              )}
+            </span>
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.6rem',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                  color: 'var(--color-text-muted)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                Clear filters ×
+              </button>
+            )}
+          </div>
+
+          {/* Search + filter row */}
+          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_1fr] gap-2">
+            <SearchInput value={search} onChange={setSearch} />
+            <SelectInput
+              label="Site"
+              value={siteFilter}
+              onChange={setSiteFilter}
+              options={[['all', 'All sites'], ['patuxent', 'Patuxent'], ['wallkill', 'Wallkill']]}
+            />
+            <SelectInput
+              label="Gender"
+              value={genderFilter}
+              onChange={setGenderFilter}
+              options={[['all', 'All genders'], ...genderOptions.map((g): [string, string] => [g, g])]}
+            />
+            <SelectInput
+              label="Pattern"
+              value={patternFilter}
+              onChange={setPatternFilter}
+              options={[['all', 'All patterns'], ...patternOptions.map((p): [string, string] => [p, p])]}
+            />
+          </div>
+
           {error && (
             <p style={{ color: 'var(--color-text-error)', fontSize: '0.85rem' }}>
               Error loading turtles: {(error as Error).message}
@@ -244,9 +343,9 @@ export default function Dashboard() {
           {isLoading && (
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Loading…</p>
           )}
-          {turtles && turtles.length > 0 && (
+          {turtles && filteredTurtles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {turtles.map((turtle) => (
+              {filteredTurtles.map((turtle) => (
                 <TurtleCard key={turtle.id} turtle={turtle} />
               ))}
             </div>
@@ -256,9 +355,102 @@ export default function Dashboard() {
               No turtles yet. Submit some photos to get started.
             </p>
           )}
+          {turtles && turtles.length > 0 && filteredTurtles.length === 0 && (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
+              No turtles match those filters.
+            </p>
+          )}
         </div>
       </div>
     </div>
+  );
+}
+
+function uniqueValues<T>(items: T[] | undefined, accessor: (t: T) => string | null | undefined): string[] {
+  if (!items) return [];
+  const set = new Set<string>();
+  for (const item of items) {
+    const v = accessor(item);
+    if (v) set.add(v);
+  }
+  return Array.from(set).sort();
+}
+
+function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search by ID or nickname…"
+        style={{
+          width: '100%',
+          padding: '0.625rem 0.875rem 0.625rem 2.25rem',
+          fontFamily: 'var(--font-body)',
+          fontSize: '0.875rem',
+          color: 'var(--color-text-primary)',
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border-input)',
+          outline: 'none',
+          boxSizing: 'border-box',
+        }}
+      />
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        style={{
+          position: 'absolute',
+          left: '0.75rem',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--color-text-muted)',
+          pointerEvents: 'none',
+        }}
+      >
+        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+function SelectInput({
+  value, onChange, options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        width: '100%',
+        padding: '0.625rem 0.875rem',
+        fontFamily: 'var(--font-body)',
+        fontSize: '0.875rem',
+        color: 'var(--color-text-primary)',
+        backgroundColor: 'var(--color-bg)',
+        border: '1px solid var(--color-border-input)',
+        outline: 'none',
+        boxSizing: 'border-box',
+        appearance: 'none',
+        backgroundImage:
+          "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 0.75rem center',
+        paddingRight: '2rem',
+      }}
+    >
+      {options.map(([v, label]) => (
+        <option key={v} value={v}>{label}</option>
+      ))}
+    </select>
   );
 }
 

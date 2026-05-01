@@ -54,17 +54,27 @@ export interface TurtleResponse {
   id: number;
   external_id: string;
   name: string | null;
+  nickname: string | null;
   site: string | null;
-  gender: string | null;
   first_seen: string;
   notes: string | null;
+  cover_capture_id: number | null;
+  // Extended fields from Airtable
   species: string | null;
+  gender: string | null;
   pattern: string | null;
   carapace_flare: string | null;
-  cover_capture_id: number | null;
+  health_status: string | null;
+  residence_status: string | null;
+  identifying_marks: string | null;
+  eye_color: string | null;
+  plastron_depression: string | null;
+  plots_text: string | null;
+  // Aggregates / metadata
   capture_count: number;
   encounter_count: number;
   latest_capture: string | null;
+  last_synced_at: string | null;
   captures: CaptureResponse[];
 }
 
@@ -78,20 +88,25 @@ export interface CaptureResponse {
   thumbnail_url: string | null;
   display_url: string | null;
   original_filename: string;
+  captured_date: string | null;
   keypoint_count: number;
 }
 
 export interface EncounterResponse {
   id: number;
   turtle_id: number;
+  external_id: string | null;
   encounter_date: string | null;
   plot_name: string | null;
+  survey_id: string | null;
+  identified: string | null;
   health_status: string | null;
   behavior: string | null;
   setting: string | null;
   conditions: string | null;
   notes: string | null;
   observer_nickname: string | null;
+  capture_count: number;
 }
 
 export interface CompareResponse {
