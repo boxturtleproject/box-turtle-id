@@ -123,6 +123,7 @@ export default function TurtleProfile() {
           accent={siteColor}
           sectionLabelStyle={SECTION_LABEL}
           height="480px"
+          encounterFilter={encounterFilter}
         />
 
         <EncounterFilterBar
@@ -953,54 +954,65 @@ function EncounterFilterBar({
     return enc.plot_name ? `${date} · ${enc.plot_name}` : date;
   }
 
+  const active = value !== 'all';
+
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <span style={SECTION_LABEL}>
-        Filter by encounter
-        {value !== 'all' && (
+      <span style={SECTION_LABEL}>Filter by encounter</span>
+      <div className="flex items-stretch gap-2">
+        <select
+          value={value === 'all' ? 'all' : String(value)}
+          onChange={(e) => onChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          style={{
+            padding: '0.55rem 2rem 0.55rem 0.875rem',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.85rem',
+            color: 'var(--color-text-primary)',
+            backgroundColor: active ? '#fffbe6' : 'var(--color-bg)',
+            border: `1px solid ${active ? '#d4a017' : 'var(--color-border-input)'}`,
+            outline: 'none',
+            appearance: 'none',
+            minWidth: '18rem',
+            backgroundImage:
+              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.75rem center',
+          }}
+        >
+          <option value="all">All encounters ({encounters.length})</option>
+          {encounters.map((enc) => (
+            <option key={enc.id} value={String(enc.id)}>
+              {labelFor(enc)}
+            </option>
+          ))}
+        </select>
+        {active && (
           <button
             type="button"
             onClick={() => onChange('all')}
             style={{
-              ...META_LABEL,
-              marginLeft: '0.625rem',
-              color: 'var(--color-text-muted)',
-              background: 'transparent',
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: '#fff',
+              backgroundColor: 'var(--color-btn-primary-bg)',
               border: 'none',
+              padding: '0 1rem',
               cursor: 'pointer',
-              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-btn-primary-bg-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-btn-primary-bg)')}
           >
-            Clear ×
+            <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>×</span>
+            Clear filter
           </button>
         )}
-      </span>
-      <select
-        value={value === 'all' ? 'all' : String(value)}
-        onChange={(e) => onChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-        style={{
-          padding: '0.55rem 2rem 0.55rem 0.875rem',
-          fontFamily: 'var(--font-body)',
-          fontSize: '0.85rem',
-          color: 'var(--color-text-primary)',
-          backgroundColor: 'var(--color-bg)',
-          border: '1px solid var(--color-border-input)',
-          outline: 'none',
-          appearance: 'none',
-          minWidth: '18rem',
-          backgroundImage:
-            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
-          backgroundRepeat: 'no-repeat',
-          backgroundPosition: 'right 0.75rem center',
-        }}
-      >
-        <option value="all">All encounters ({encounters.length})</option>
-        {encounters.map((enc) => (
-          <option key={enc.id} value={String(enc.id)}>
-            {labelFor(enc)}
-          </option>
-        ))}
-      </select>
+      </div>
     </div>
   );
 }

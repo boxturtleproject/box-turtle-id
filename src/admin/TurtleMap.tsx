@@ -16,10 +16,11 @@ interface TurtleMapProps {
   accent: string;
   height?: string;
   sectionLabelStyle?: React.CSSProperties;
+  encounterFilter?: number | 'all';
 }
 
 export function TurtleMap({
-  turtleId, accent, height = '320px', sectionLabelStyle,
+  turtleId, accent, height = '320px', sectionLabelStyle, encounterFilter = 'all',
 }: TurtleMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -49,16 +50,27 @@ export function TurtleMap({
     };
   }, []);
 
+  // Apply the encounter filter client-side: when set to a specific encounter
+  // id, only show pins for captures linked to that encounter.
+  const filteredLocations = locations
+    ? locations.filter((l) => encounterFilter === 'all' || l.encounter_id === encounterFilter)
+    : undefined;
+
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !locations || locations.length === 0) return;
+    if (!map || !filteredLocations || filteredLocations.length === 0) {
+      // Still need to clear any previous markers when filter narrows to zero
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      return;
+    }
 
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
     const addMarkers = () => {
       const bounds = new mapboxgl.LngLatBounds();
-      locations.forEach((loc) => {
+      filteredLocations.forEach((loc) => {
         const color = SITE_COLOR[loc.site ?? ''] ?? accent;
         const el = document.createElement('div');
         el.style.cssText = `
@@ -88,16 +100,18 @@ export function TurtleMap({
 
     if (map.loaded()) addMarkers();
     else map.once('load', addMarkers);
-  }, [locations, accent]);
+  }, [filteredLocations, accent]);
 
-  // Don't render anything if there are zero locations
+  // Don't render anything if there are zero locations at all (no GPS for this turtle)
   if (locations && locations.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-3">
       {sectionLabelStyle && (
         <span style={sectionLabelStyle}>
-          Map{locations ? ` (${locations.length})` : ''}
+          Map{filteredLocations ? ` (${filteredLocations.length}${
+            locations && filteredLocations.length !== locations.length ? ` of ${locations.length}` : ''
+          })` : ''}
         </span>
       )}
       <div
