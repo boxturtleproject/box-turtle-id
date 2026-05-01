@@ -56,6 +56,9 @@ class Capture(Base):
     image_type: Mapped[str] = mapped_column(default="carapace_top")
     image_path: Mapped[str]
     thumbnail_path: Mapped[Optional[str]] = mapped_column(default=None)
+    display_path: Mapped[Optional[str]] = mapped_column(default=None)
+    thumbnail_url: Mapped[Optional[str]] = mapped_column(default=None)
+    display_url: Mapped[Optional[str]] = mapped_column(default=None)
     original_filename: Mapped[str]
     captured_date: Mapped[Optional[date]] = mapped_column(default=None)
 

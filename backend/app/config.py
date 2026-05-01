@@ -26,7 +26,17 @@ class Settings(BaseSettings):
     acceptance_threshold: float = 4.0
 
     # Image processing
-    thumbnail_size: int = 200
+    thumbnail_size: int = 400  # max dim of square thumbnail
+    display_width: int = 1280  # web detail-view width (preserves aspect ratio)
+    jpeg_quality: int = 85
+    derivatives_dir: Path = Path("data/captures/derivatives")
+
+    # Object storage (Railway / S3-compatible). Optional — falls back to local.
+    bucket_endpoint: Optional[str] = None
+    bucket_access_key_id: Optional[str] = None
+    bucket_secret_access_key: Optional[str] = None
+    bucket_name: Optional[str] = None
+    bucket_public_url: Optional[str] = None  # e.g. https://bucket.example.com — prepended to keys
 
     # Airtable sync
     airtable_token: Optional[str] = None

@@ -24,6 +24,9 @@ class CaptureResponse(BaseModel):
     image_type: str = "carapace_top"
     image_path: str
     thumbnail_path: Optional[str]
+    display_path: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    display_url: Optional[str] = None
     original_filename: str
     captured_date: Optional[date]
     latitude: Optional[float] = None
