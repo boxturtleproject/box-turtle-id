@@ -1,6 +1,7 @@
 // src/public/MatchProfilePage.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import type { Site } from '../shared/types';
 import { useQuery } from '@tanstack/react-query';
 import { useSite } from '../shared/context/SiteContext';
 import { fetchTurtle, fetchEncounters, imageUrl } from '../shared/lib/api';
@@ -71,7 +72,7 @@ export function MatchProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { turtleId } = useParams<{ turtleId: string }>();
-  const { site } = useSite();
+  const { site, setSite } = useSite();
   const [confirmHovered, setConfirmHovered] = useState(false);
   const [notMyTurtleHovered, setNotMyTurtleHovered] = useState(false);
 
@@ -90,15 +91,20 @@ export function MatchProfilePage() {
     enabled: !isNaN(id),
   });
 
-  if (!site) {
-    navigate('/');
-    return null;
-  }
+  // Make /results/:turtleId deep-linkable: when the user lands here without a
+  // selected site (refresh, fresh tab, shared link), derive it from the turtle
+  // record once it loads.
+  const turtleSite = turtleQuery.data?.site;
+  useEffect(() => {
+    if (!site && (turtleSite === 'patuxent' || turtleSite === 'wallkill')) {
+      setSite(turtleSite as Site);
+    }
+  }, [site, turtleSite, setSite]);
 
-  if (turtleQuery.isLoading) {
+  if (turtleQuery.isLoading || (!site && !turtleQuery.isError)) {
     return (
       <div className="flex items-center justify-center w-full" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} onWelcome={() => navigate('/')} />
+        {site && <SiteBand site={site} onWelcome={() => navigate('/')} />}
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-secondary)', letterSpacing: '0.2em', fontSize: '0.75rem', textTransform: 'uppercase' }}>
           Loading...
         </span>
@@ -109,7 +115,7 @@ export function MatchProfilePage() {
   if (turtleQuery.isError || !turtleQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center gap-6 w-full px-8" style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh', paddingTop: '2.5rem' }}>
-        <SiteBand site={site} onWelcome={() => navigate('/')} />
+        {site && <SiteBand site={site} onWelcome={() => navigate('/')} />}
         <span style={{ fontFamily: 'var(--font-body)', color: 'var(--color-text-error)', fontSize: '0.85rem', letterSpacing: '0.05em', textAlign: 'center' }}>
           Error: {turtleQuery.error instanceof Error ? turtleQuery.error.message : 'Failed to load turtle data.'}
         </span>
@@ -139,7 +145,7 @@ export function MatchProfilePage() {
       className="flex flex-col w-full px-8 pb-10 pt-20 gap-8"
       style={{ backgroundColor: 'var(--color-bg)', minHeight: '100dvh' }}
     >
-      <SiteBand site={site} onWelcome={() => navigate('/')} />
+      {site && <SiteBand site={site} onWelcome={() => navigate('/')} />}
 
       {/* Header */}
       <div className="flex flex-col gap-2">
@@ -184,18 +190,30 @@ export function MatchProfilePage() {
       <div className="flex flex-col gap-2">
         {topCapture && (
           <div style={{ width: '100%', aspectRatio: '4/3', overflow: 'hidden' }}>
-            <img src={imageUrl(topCapture.image_path)} alt="Carapace top" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={imageUrl(topCapture.display_url ?? topCapture.thumbnail_url ?? topCapture.image_path)}
+              alt="Carapace top"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
         )}
         <div className="flex gap-2">
           {leftCapture && (
             <div style={{ flex: 1, aspectRatio: '1/1', overflow: 'hidden' }}>
-              <img src={imageUrl(leftCapture.image_path)} alt="Carapace left" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={imageUrl(leftCapture.display_url ?? leftCapture.thumbnail_url ?? leftCapture.image_path)}
+                alt="Carapace left"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
           )}
           {rightCapture && (
             <div style={{ flex: 1, aspectRatio: '1/1', overflow: 'hidden' }}>
-              <img src={imageUrl(rightCapture.image_path)} alt="Carapace right" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={imageUrl(rightCapture.display_url ?? rightCapture.thumbnail_url ?? rightCapture.image_path)}
+                alt="Carapace right"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             </div>
           )}
         </div>
