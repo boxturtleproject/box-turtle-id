@@ -140,3 +140,64 @@ class AirtableSync:
         if not self.dry_run:
             set_cursor(self.db, "turtles")
         return {"created": created, "updated": updated}
+
+    def _turtle_id_for(self, airtable_rid: str) -> Optional[int]:
+        t = self.db.query(Turtle).filter(Turtle.airtable_record_id == airtable_rid).first()
+        return t.id if t else None
+
+    def _survey_fk_for(self, airtable_rid: str) -> Optional[int]:
+        s = self.db.query(Survey).filter(Survey.airtable_record_id == airtable_rid).first()
+        return s.id if s else None
+
+    def _plot_fk_for(self, airtable_rid: str) -> Optional[int]:
+        p = self.db.query(Plot).filter(Plot.airtable_record_id == airtable_rid).first()
+        return p.id if p else None
+
+    # ---------- Encounters ----------
+
+    def pull_encounters(self, incremental: bool = False) -> dict:
+        cursor = get_cursor(self.db, "encounters") if incremental else None
+        created = updated = skipped = 0
+        for rec in self.client.iter_records(self.tables["encounters"], modified_since=cursor):
+            rid = rec["id"]
+            f = rec["fields"]
+
+            turtle_links = f.get("Turtle ID") or []
+            turtle_id = self._turtle_id_for(turtle_links[0]) if turtle_links else None
+            if turtle_id is None:
+                skipped += 1
+                continue
+
+            plot_links = f.get("Plot") or []
+            plot_fk = self._plot_fk_for(plot_links[0]) if plot_links else None
+            survey_links = f.get("Survey ID") or []
+            survey_fk = self._survey_fk_for(survey_links[0]) if survey_links else None
+
+            plot_lookup = f.get("Plot Location (from Plots)") or []
+            survey_lookup = f.get("Survey ID (from Survey ID)") or []
+            data = dict(
+                turtle_id=turtle_id,
+                external_id=f.get("Encounter ID"),
+                encounter_date=_parse_date(f.get("Date")),
+                plot_name=plot_lookup[0] if plot_lookup else None,
+                plot_fk=plot_fk,
+                survey_id=survey_lookup[0] if survey_lookup else None,
+                survey_fk=survey_fk,
+                identified=f.get("Identified"),
+                health_status=_join_multi(f.get("Health Status")),
+                behavior=_join_multi(f.get("Behavior")),
+                notes=f.get("Notes"),
+                last_synced_at=datetime.now(),
+            )
+            existing = self.db.query(Encounter).filter(Encounter.airtable_record_id == rid).first()
+            if existing:
+                for k, v in data.items():
+                    setattr(existing, k, v)
+                updated += 1
+            else:
+                self.db.add(Encounter(airtable_record_id=rid, **data))
+                created += 1
+        self.db.commit()
+        if not self.dry_run:
+            set_cursor(self.db, "encounters")
+        return {"created": created, "updated": updated, "skipped_no_turtle": skipped}
