@@ -261,13 +261,18 @@ class AirtableSync:
         out_path = out_dir / f"{att_id}_{filename}"
         out_path.write_bytes(content)
 
-        # SIFT extraction
+        # SIFT extraction — skip context shots (Site View) and resize to keep blobs sane
         kp_blob = desc_blob = None
         kp_count = 0
-        if sift:
+        if sift and image_type not in ("Site View",):
             arr = np.frombuffer(content, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if img is not None:
+                h, w = img.shape[:2]
+                if w > settings.resized_width:
+                    new_h = int(h * settings.resized_width / w)
+                    img = cv2.resize(img, (settings.resized_width, new_h),
+                                     interpolation=cv2.INTER_AREA)
                 feat = sift.extract_features(img)
                 if feat:
                     kp_blob, desc_blob = feat.serialize()
