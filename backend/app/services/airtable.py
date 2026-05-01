@@ -100,4 +100,43 @@ class AirtableSync:
             set_cursor(self.db, "surveys")
         return {"created": created, "updated": updated}
 
-    # ---------- (More to come in next tasks) ----------
+    # ---------- Turtles ----------
+
+    def pull_turtles(self, incremental: bool = False) -> dict:
+        cursor = get_cursor(self.db, "turtles") if incremental else None
+        created = updated = 0
+        for rec in self.client.iter_records(self.tables["turtles"], modified_since=cursor):
+            rid = rec["id"]
+            f = rec["fields"]
+            first_seen = _parse_date(f.get("Date First Identified"))
+            data = dict(
+                external_id=f.get("Turtle ID") or f"AT-{rid[:8]}",
+                name=f.get("Nickname"),
+                nickname=f.get("Nickname"),
+                site="wallkill",
+                first_seen=first_seen.date() if first_seen else datetime.now().date(),
+                notes=f.get("Notes"),
+                species=f.get("Species"),
+                gender=f.get("Gender"),
+                pattern=_join_multi(f.get("Pattern")),
+                carapace_flare=_join_multi(f.get("Carapace Flare")),
+                health_status=f.get("Health Status"),
+                residence_status=f.get("Residence Status"),
+                identifying_marks=_join_multi(f.get("Identifying Marks")),
+                eye_color=_join_multi(f.get("Eye Color")),
+                plastron_depression=_join_multi(f.get("Plastron Depression")),
+                plots_text=f.get("Plots"),
+                last_synced_at=datetime.now(),
+            )
+            existing = self.db.query(Turtle).filter(Turtle.airtable_record_id == rid).first()
+            if existing:
+                for k, v in data.items():
+                    setattr(existing, k, v)
+                updated += 1
+            else:
+                self.db.add(Turtle(airtable_record_id=rid, **data))
+                created += 1
+        self.db.commit()
+        if not self.dry_run:
+            set_cursor(self.db, "turtles")
+        return {"created": created, "updated": updated}
