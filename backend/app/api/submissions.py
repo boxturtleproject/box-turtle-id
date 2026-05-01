@@ -26,6 +26,7 @@ from app.schemas.submission import (
 from app.services import CropperService, ImageService, SiftService
 from app.services.derivatives import DerivativesService
 from app.services.sift import SiftFeatures
+from app.services.storage import S3Storage, get_storage
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,25 @@ def _get_features(capture: Capture) -> Optional[SiftFeatures]:
 # the GIL during knnMatch, so threads run in parallel. 4 is a safe default
 # that scales well on most modern CPUs without thrashing.
 _MATCH_WORKERS = 4
+
+
+def _load_capture_image_for_viz(capture: Capture, image_svc: ImageService):
+    """Load an image for SIFT visualization: local original first, else bucket display."""
+    if capture.image_path:
+        local = image_svc.load(capture.image_path)
+        if local is not None:
+            return local
+    storage = get_storage()
+    if isinstance(storage, S3Storage) and capture.display_path:
+        try:
+            import requests
+            url = storage.signed_url(capture.display_path, expires_in=120)
+            resp = requests.get(url, timeout=10)
+            if resp.ok:
+                return image_svc.load_from_bytes(resp.content)
+        except Exception as e:
+            logger.warning(f"viz fetch from bucket failed for capture {capture.id}: {e}")
+    return None
 
 router = APIRouter()
 
@@ -239,18 +259,22 @@ async def identify(
         turtle = db.query(Turtle).filter(Turtle.id == tid).first()
         turtle_nickname = turtle.name or turtle.external_id if turtle else None
 
-        # Generate visualization using the actual query image that scored best
+        # Generate visualization using the actual query image that scored best.
+        # Falls back to fetching the display variant from the bucket when the
+        # original isn't on this host's volume (typical on Railway).
         viz_filename = f"viz_{uuid.uuid4()}.jpg"
         viz_dir = settings.data_dir / "thumbnails"
         viz_dir.mkdir(parents=True, exist_ok=True)
-        db_img = image_svc.load(capture.image_path)
+        visualization_url = None
+        db_img = _load_capture_image_for_viz(capture, image_svc)
         if db_img is not None:
             query_img_raw, _ = query_images[qi]
             query_img = image_svc.preprocess(query_img_raw, crop=True, cropper=cropper)
             viz_image = sift.generate_match_visualization(
                 query_img, db_img, qf, db_features,
             )
-            cv2.imwrite(str(viz_dir / viz_filename), viz_image)
+            if cv2.imwrite(str(viz_dir / viz_filename), viz_image):
+                visualization_url = f"/api/visualizations/{viz_filename}"
 
         candidates.append(
             SubmissionCandidate(
@@ -258,7 +282,7 @@ async def identify(
                 turtle_nickname=turtle_nickname,
                 score=round(score, 1),
                 confidence=_score_to_confidence(score),
-                visualization_url=f"/api/visualizations/{viz_filename}",
+                visualization_url=visualization_url,
                 thumbnail_url=capture.thumbnail_url or capture.display_url
                               or f"/api/static/{capture.image_path}",
             )
