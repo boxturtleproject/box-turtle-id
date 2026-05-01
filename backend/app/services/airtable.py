@@ -364,6 +364,51 @@ class AirtableSync:
                 self.db.rollback()
         return {"turtle_captures": new_turtle_caps, "encounter_captures": new_enc_caps}
 
+    def extract_sift_for_captures(self, limit: Optional[int] = None) -> dict:
+        """Run SIFT on captures that don't have keypoints yet. No network calls."""
+        sift = SiftService()
+        q = (self.db.query(Capture)
+             .filter(Capture.keypoint_count == 0)
+             .filter(Capture.image_path.isnot(None)))
+        # Skip Site View context shots
+        q = q.filter(Capture.image_type != "site_view")
+        if limit:
+            q = q.limit(limit)
+        caps = q.all()
+        processed = failed = missing = 0
+        for cap in caps:
+            path = Path(cap.image_path)
+            if not path.exists():
+                missing += 1
+                continue
+            try:
+                img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+                if img is None:
+                    failed += 1
+                    continue
+                h, w = img.shape[:2]
+                if w > settings.resized_width:
+                    new_h = int(h * settings.resized_width / w)
+                    img = cv2.resize(img, (settings.resized_width, new_h),
+                                     interpolation=cv2.INTER_AREA)
+                feat = sift.extract_features(img)
+                if not feat:
+                    failed += 1
+                    continue
+                kp_blob, desc_blob = feat.serialize()
+                cap.keypoints_data = kp_blob
+                cap.descriptors_data = desc_blob
+                cap.keypoint_count = feat.keypoint_count
+                processed += 1
+                if processed % 25 == 0:
+                    self.db.commit()
+                    logger.info(f"SIFT extracted for {processed} captures so far")
+            except Exception as e:
+                logger.error(f"SIFT failed for capture {cap.id} ({path}): {e}")
+                failed += 1
+        self.db.commit()
+        return {"processed": processed, "failed": failed, "missing_file": missing}
+
     # ---------- Orchestrators ----------
 
     def pull_all(self, incremental: bool = False, with_images: bool = True,
