@@ -1,6 +1,9 @@
 import json
+import logging
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
@@ -23,6 +26,39 @@ from app.schemas.submission import (
 from app.services import CropperService, ImageService, SiftService
 from app.services.derivatives import DerivativesService
 from app.services.sift import SiftFeatures
+
+logger = logging.getLogger(__name__)
+
+# Process-level cache of deserialized SiftFeatures, keyed by capture.id.
+# Survives the lifetime of the worker process. Skips pickle.loads + numpy
+# reconstruction on every identify request after the first.
+_descriptor_cache: dict[int, SiftFeatures] = {}
+_descriptor_cache_lock = threading.Lock()
+
+
+def _get_features(capture: Capture) -> Optional[SiftFeatures]:
+    """Return cached SiftFeatures for a capture, deserializing on first miss."""
+    cached = _descriptor_cache.get(capture.id)
+    if cached is not None:
+        return cached
+    if capture.keypoints_data is None or capture.descriptors_data is None:
+        return None
+    try:
+        feats = SiftFeatures.deserialize(capture.keypoints_data, capture.descriptors_data)
+    except Exception as e:
+        logger.warning(f"failed to deserialize features for capture {capture.id}: {e}")
+        return None
+    # The dict assignment is atomic in CPython; a brief lock keeps us safe
+    # from racy double-load on concurrent first hits.
+    with _descriptor_cache_lock:
+        _descriptor_cache[capture.id] = feats
+    return feats
+
+
+# Number of threads used to fan out FLANN comparisons. cv2's FLANN releases
+# the GIL during knnMatch, so threads run in parallel. 4 is a safe default
+# that scales well on most modern CPUs without thrashing.
+_MATCH_WORKERS = 4
 
 router = APIRouter()
 
@@ -81,8 +117,9 @@ async def identify(
     sub_dir = settings.submissions_dir / submission_id
     sub_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save all provided images and collect for SIFT matching
-    query_images = []  # (image, label) pairs for matching
+    # Save all provided images and collect for SIFT matching, tagged with
+    # the carapace orientation so we can match against DB photos of the same type.
+    query_images: list[tuple["cv2.Mat", str]] = []  # (image, image_type)
 
     top_path = None
     if top is not None:
@@ -91,7 +128,7 @@ async def identify(
         if top_img is not None:
             top_path = str(sub_dir / "top.jpg")
             cv2.imwrite(top_path, top_img)
-            query_images.append(top_img)
+            query_images.append((top_img, "carapace_top"))
 
     left_path = None
     if left is not None:
@@ -100,7 +137,7 @@ async def identify(
         if left_img is not None:
             left_path = str(sub_dir / "left.jpg")
             cv2.imwrite(left_path, left_img)
-            query_images.append(left_img)
+            query_images.append((left_img, "carapace_left"))
 
     right_path = None
     if right is not None:
@@ -109,7 +146,7 @@ async def identify(
         if right_img is not None:
             right_path = str(sub_dir / "right.jpg")
             cv2.imwrite(right_path, right_img)
-            query_images.append(right_img)
+            query_images.append((right_img, "carapace_right"))
 
     if not query_images:
         raise HTTPException(status_code=400, detail="Failed to load any images")
@@ -125,15 +162,17 @@ async def identify(
     db.add(submission)
     db.commit()
 
-    # Extract SIFT features from all submitted images
-    all_query_features = []
-    for img in query_images:
+    # Extract SIFT features from each submitted image, tagging with its
+    # image_type so the matcher can compare against the same DB type.
+    # query_entries: list of (image_type, query_image_index, query_image, features)
+    query_entries: list[tuple[str, int, "cv2.Mat", SiftFeatures]] = []
+    for qi, (img, img_type) in enumerate(query_images):
         processed = image_svc.preprocess(img, crop=True, cropper=cropper)
         features = sift.extract_features(processed)
         if features is not None:
-            all_query_features.append(features)
+            query_entries.append((img_type, qi, img, features))
 
-    if not all_query_features:
+    if not query_entries:
         processing_time_ms = int((time.time() - start_time) * 1000)
         return IdentifyResponse(
             candidates=[],
@@ -142,37 +181,55 @@ async def identify(
             submission_id=submission_id,
         )
 
-    # Query all captures with cached SIFT descriptors, filtered by site
-    captures_query = db.query(Capture).filter(Capture.descriptors_data.isnot(None))
-    captures_query = captures_query.join(Turtle, Capture.turtle_id == Turtle.id).filter(
-        Turtle.site == site
+    # Type-aware candidate set: for each query image, only fetch DB captures
+    # of the matching image_type. This typically cuts the candidate set by ~5×
+    # for a top/left/right submission (one type per query instead of all types).
+    query_types = {entry[0] for entry in query_entries}
+    captures_query = (
+        db.query(Capture)
+        .filter(Capture.descriptors_data.isnot(None))
+        .filter(Capture.image_type.in_(query_types))
+        .join(Turtle, Capture.turtle_id == Turtle.id)
+        .filter(Turtle.site == site)
     )
     captures = captures_query.all()
 
-    # Compare all query features against each DB capture, keep best score per turtle
-    candidates: list[SubmissionCandidate] = []
-    best_scores: dict[int, float] = {}  # turtle_id -> best score
-    best_viz_data: dict[int, tuple] = {}  # turtle_id -> (query_feat, db_feat, capture, query_img_idx)
+    # Compare each query image only against DB captures of the same image_type.
+    # Captures grouped by type so we don't repeatedly re-filter inside the loop.
+    captures_by_type: dict[str, list[Capture]] = {}
+    for cap in captures:
+        captures_by_type.setdefault(cap.image_type, []).append(cap)
 
-    for capture in captures:
+    # Shared best-score map updated under a lock by the worker threads.
+    best_scores: dict[int, float] = {}
+    best_viz_data: dict[int, tuple] = {}
+    best_lock = threading.Lock()
+
+    def _compare_one(capture: Capture, query_features: SiftFeatures, query_idx: int) -> None:
+        db_features = _get_features(capture)
+        if db_features is None:
+            return
         try:
-            db_features = SiftFeatures.deserialize(
-                capture.keypoints_data, capture.descriptors_data
-            )
-
-            # Try each submitted photo against this DB capture
-            for qi, qf in enumerate(all_query_features):
-                result = sift.compare(qf, db_features)
-
-                if result.score < settings.acceptance_threshold:
-                    continue
-
-                tid = capture.turtle_id
-                if tid not in best_scores or result.score > best_scores[tid]:
-                    best_scores[tid] = result.score
-                    best_viz_data[tid] = (qf, db_features, capture, qi)
+            result = sift.compare(query_features, db_features)
         except Exception:
-            continue
+            return
+        if result.score < settings.acceptance_threshold:
+            return
+        tid = capture.turtle_id
+        with best_lock:
+            if tid not in best_scores or result.score > best_scores[tid]:
+                best_scores[tid] = result.score
+                best_viz_data[tid] = (query_features, db_features, capture, query_idx)
+
+    # Fan out across threads. cv2 FLANN releases the GIL during knnMatch so
+    # threads execute the C++ work in parallel.
+    with ThreadPoolExecutor(max_workers=_MATCH_WORKERS) as pool:
+        futures = []
+        for img_type, qi, _img, qf in query_entries:
+            for capture in captures_by_type.get(img_type, ()):
+                futures.append(pool.submit(_compare_one, capture, qf, qi))
+        for f in futures:
+            f.result()
 
     # Build candidate list from best scores
     for tid, score in best_scores.items():
@@ -187,7 +244,8 @@ async def identify(
         viz_dir.mkdir(parents=True, exist_ok=True)
         db_img = image_svc.load(capture.image_path)
         if db_img is not None:
-            query_img = image_svc.preprocess(query_images[qi], crop=True, cropper=cropper)
+            query_img_raw, _ = query_images[qi]
+            query_img = image_svc.preprocess(query_img_raw, crop=True, cropper=cropper)
             viz_image = sift.generate_match_visualization(
                 query_img, db_img, qf, db_features,
             )
