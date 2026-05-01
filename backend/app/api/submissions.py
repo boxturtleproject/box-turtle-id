@@ -63,22 +63,33 @@ _MATCH_WORKERS = 4
 
 
 def _load_capture_image_for_viz(capture: Capture, image_svc: ImageService):
-    """Load an image for SIFT visualization: local original first, else bucket display."""
+    """Load an image for SIFT visualization at the SIFT resolution.
+
+    The keypoints stored on a capture were extracted from a resized version
+    (settings.resized_width, default 250 px). For the visualization to overlay
+    the matched keypoints correctly, the image we draw against must be at the
+    same scale.
+
+    Source preference: local original on the volume first, else fetch the
+    display variant from the S3 bucket via a short-lived signed URL.
+    """
+    img = None
     if capture.image_path:
-        local = image_svc.load(capture.image_path)
-        if local is not None:
-            return local
-    storage = get_storage()
-    if isinstance(storage, S3Storage) and capture.display_path:
-        try:
-            import requests
-            url = storage.signed_url(capture.display_path, expires_in=120)
-            resp = requests.get(url, timeout=10)
-            if resp.ok:
-                return image_svc.load_from_bytes(resp.content)
-        except Exception as e:
-            logger.warning(f"viz fetch from bucket failed for capture {capture.id}: {e}")
-    return None
+        img = image_svc.load(capture.image_path)
+    if img is None:
+        storage = get_storage()
+        if isinstance(storage, S3Storage) and capture.display_path:
+            try:
+                import requests
+                url = storage.signed_url(capture.display_path, expires_in=120)
+                resp = requests.get(url, timeout=10)
+                if resp.ok:
+                    img = image_svc.load_from_bytes(resp.content)
+            except Exception as e:
+                logger.warning(f"viz fetch from bucket failed for capture {capture.id}: {e}")
+    if img is None:
+        return None
+    return image_svc.resize(img)
 
 router = APIRouter()
 
