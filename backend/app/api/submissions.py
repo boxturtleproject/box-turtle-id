@@ -152,13 +152,16 @@ async def identify(
     # the carapace orientation so we can match against DB photos of the same type.
     query_images: list[tuple["cv2.Mat", str]] = []  # (image, image_type)
 
+    # Persist the *original* bytes so EXIF (incl. GPS) survives for later
+    # extraction in _create_captures_from_submission. cv2.imwrite re-encodes
+    # without metadata, which drops the iPhone's GPS tags.
     top_path = None
     if top is not None:
         top_data = await top.read()
         top_img = image_svc.load_from_bytes(top_data)
         if top_img is not None:
             top_path = str(sub_dir / "top.jpg")
-            cv2.imwrite(top_path, top_img)
+            Path(top_path).write_bytes(top_data)
             query_images.append((top_img, "carapace_top"))
 
     left_path = None
@@ -167,7 +170,7 @@ async def identify(
         left_img = image_svc.load_from_bytes(left_data)
         if left_img is not None:
             left_path = str(sub_dir / "left.jpg")
-            cv2.imwrite(left_path, left_img)
+            Path(left_path).write_bytes(left_data)
             query_images.append((left_img, "carapace_left"))
 
     right_path = None
@@ -176,7 +179,7 @@ async def identify(
         right_img = image_svc.load_from_bytes(right_data)
         if right_img is not None:
             right_path = str(sub_dir / "right.jpg")
-            cv2.imwrite(right_path, right_img)
+            Path(right_path).write_bytes(right_data)
             query_images.append((right_img, "carapace_right"))
 
     if not query_images:
@@ -475,9 +478,18 @@ def _create_captures_from_submission(
         if not src.exists():
             continue
 
-        img = image_svc.load(src)
+        # Read bytes once: needed for EXIF + decode for SIFT.
+        try:
+            raw_bytes = src.read_bytes()
+        except OSError:
+            continue
+        img = image_svc.load_from_bytes(raw_bytes)
         if img is None:
             continue
+
+        exif = ImageService.extract_exif(raw_bytes)
+        cap_lat = exif.latitude if exif.latitude is not None else enc_lat
+        cap_lng = exif.longitude if exif.longitude is not None else enc_lng
 
         perm_path = image_svc.save(img)
 
@@ -499,8 +511,11 @@ def _create_captures_from_submission(
             keypoints_data=kp_bytes,
             descriptors_data=desc_bytes,
             keypoint_count=kp_count,
-            latitude=enc_lat,  # encounter pin; EXIF GPS would override later if present
-            longitude=enc_lng,
+            latitude=cap_lat,
+            longitude=cap_lng,
+            exif_datetime=exif.datetime,
+            camera_make=exif.camera_make,
+            camera_model=exif.camera_model,
             source="app",
         )
         db.add(capture)
@@ -518,9 +533,17 @@ def _create_captures_from_submission(
             src = Path(other_path)
             if not src.exists():
                 continue
-            img = image_svc.load(src)
+            try:
+                raw_bytes = src.read_bytes()
+            except OSError:
+                continue
+            img = image_svc.load_from_bytes(raw_bytes)
             if img is None:
                 continue
+
+            exif = ImageService.extract_exif(raw_bytes)
+            cap_lat = exif.latitude if exif.latitude is not None else enc_lat
+            cap_lng = exif.longitude if exif.longitude is not None else enc_lng
 
             perm_path = image_svc.save(img)
             capture = Capture(
@@ -529,6 +552,11 @@ def _create_captures_from_submission(
                 image_type="other",
                 image_path=perm_path,
                 original_filename=f"other_{i}.jpg",
+                latitude=cap_lat,
+                longitude=cap_lng,
+                exif_datetime=exif.datetime,
+                camera_make=exif.camera_make,
+                camera_model=exif.camera_model,
                 source="app",
             )
             db.add(capture)
