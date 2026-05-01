@@ -5,7 +5,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import func
+from sqlalchemy import and_, case, func, literal
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -35,40 +35,81 @@ async def list_turtles(
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    """List all known turtles with capture and encounter counts."""
-    turtles = db.query(Turtle).offset(skip).limit(limit).all()
+    """List all known turtles with capture/encounter counts and a single hero capture.
+
+    The dashboard only needs one capture per turtle for the card thumbnail. We
+    skip returning the full capture list (often 30+ rows per turtle) and pick a
+    deterministic hero in SQL: cover_capture_id if set, else the most recent
+    carapace_left, else carapace_top, else any capture for the turtle.
+    """
+    turtles = db.query(Turtle).order_by(Turtle.id).offset(skip).limit(limit).all()
+    if not turtles:
+        return []
+
+    turtle_ids = [t.id for t in turtles]
+
+    # All capture/encounter counts in one query each
+    capture_counts = dict(
+        db.query(Capture.turtle_id, func.count(Capture.id))
+        .filter(Capture.turtle_id.in_(turtle_ids))
+        .group_by(Capture.turtle_id)
+        .all()
+    )
+    encounter_counts = dict(
+        db.query(Encounter.turtle_id, func.count(Encounter.id))
+        .filter(Encounter.turtle_id.in_(turtle_ids))
+        .group_by(Encounter.turtle_id)
+        .all()
+    )
+
+    # Pick hero capture per turtle in one query.
+    # Sort key: cover match first (0/1), then preferred image_type rank, then
+    # most recent created_at. DISTINCT ON (turtle_id) keeps just the first row
+    # per turtle after the ORDER BY.
+    cover_ids = {t.id: t.cover_capture_id for t in turtles if t.cover_capture_id}
+    type_rank = case(
+        (Capture.image_type == "carapace_left", 0),
+        (Capture.image_type == "carapace_top", 1),
+        (Capture.image_type == "carapace_right", 2),
+        else_=3,
+    )
+    cover_match = case(
+        *[
+            (and_(Capture.turtle_id == tid, Capture.id == cid), 0)
+            for tid, cid in cover_ids.items()
+        ],
+        else_=1,
+    ) if cover_ids else literal(1)
+
+    hero_query = (
+        db.query(Capture)
+        .filter(Capture.turtle_id.in_(turtle_ids))
+        .order_by(
+            Capture.turtle_id,
+            cover_match,
+            type_rank,
+            Capture.created_at.desc(),
+        )
+        .distinct(Capture.turtle_id)
+    )
+    heroes = {c.turtle_id: c for c in hero_query.all()}
 
     results = []
     for turtle in turtles:
-        captures = db.query(Capture).filter(Capture.turtle_id == turtle.id).all()
-        capture_count = len(captures)
-        encounter_count = db.query(func.count(Encounter.id)).filter(
-            Encounter.turtle_id == turtle.id
-        ).scalar() or 0
-
-        # Find cover image: use starred capture or most recent carapace_top
-        latest_capture = None
-        if captures:
-            if turtle.cover_capture_id:
-                cover = next((c for c in captures if c.id == turtle.cover_capture_id), None)
-                if cover:
-                    latest_capture = cover.thumbnail_path or cover.image_path
-            if not latest_capture:
-                # Fall back to most recent carapace_top capture
-                carapace_tops = [c for c in captures if c.image_type == "carapace_top"]
-                if carapace_tops:
-                    most_recent = max(carapace_tops, key=lambda c: c.created_at)
-                    latest_capture = most_recent.thumbnail_path or most_recent.image_path
-                elif captures:
-                    # Fall back to any capture
-                    most_recent = max(captures, key=lambda c: c.created_at)
-                    latest_capture = most_recent.thumbnail_path or most_recent.image_path
-
+        hero = heroes.get(turtle.id)
         response = TurtleResponse.model_validate(turtle)
-        response.capture_count = capture_count
-        response.encounter_count = encounter_count
-        response.latest_capture = latest_capture
-        response.captures = [CaptureResponse.model_validate(c) for c in captures]
+        response.capture_count = capture_counts.get(turtle.id, 0)
+        response.encounter_count = encounter_counts.get(turtle.id, 0)
+        if hero is not None:
+            response.captures = [CaptureResponse.model_validate(hero)]
+            response.latest_capture = (
+                hero.thumbnail_url
+                or hero.thumbnail_path
+                or hero.image_path
+            )
+        else:
+            response.captures = []
+            response.latest_capture = None
         results.append(response)
 
     return results

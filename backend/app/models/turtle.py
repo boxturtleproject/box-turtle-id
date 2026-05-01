@@ -48,10 +48,10 @@ class Capture(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     turtle_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("turtles.id", ondelete="SET NULL"), default=None
+        ForeignKey("turtles.id", ondelete="SET NULL"), default=None, index=True
     )
     encounter_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("encounters.id", ondelete="SET NULL"), default=None
+        ForeignKey("encounters.id", ondelete="SET NULL"), default=None, index=True
     )
     image_type: Mapped[str] = mapped_column(default="carapace_top")
     image_path: Mapped[str]

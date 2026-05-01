@@ -14,7 +14,7 @@ class Encounter(Base):
     __tablename__ = "encounters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    turtle_id: Mapped[int] = mapped_column(ForeignKey("turtles.id", ondelete="CASCADE"))
+    turtle_id: Mapped[int] = mapped_column(ForeignKey("turtles.id", ondelete="CASCADE"), index=True)
     external_id: Mapped[Optional[str]] = mapped_column(default=None)
     airtable_record_id: Mapped[Optional[str]] = mapped_column(default=None)
 
