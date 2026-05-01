@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { fetchTurtle, fetchEncounters, imageUrl } from '../shared/lib/api';
+import { fetchTurtle, fetchEncounters, fetchEncounterDetail, imageUrl } from '../shared/lib/api';
 import type { CaptureResponse, EncounterResponse, TurtleResponse } from '../shared/types';
 import { TurtleMap } from './TurtleMap';
 
@@ -77,11 +77,10 @@ export default function TurtleProfile() {
     enabled: !isNaN(turtleId),
   });
 
-  const [encountersOpen, setEncountersOpen] = useState(false);
+  const [encountersOpen, setEncountersOpen] = useState(true);
   const { data: encounters, isLoading: encountersLoading } = useQuery({
     queryKey: ['encounters', turtleId],
     queryFn: () => fetchEncounters(turtleId),
-    // Lazy: only fetch the encounter list when the section is expanded.
     enabled: !isNaN(turtleId) && encountersOpen,
   });
 
@@ -714,7 +713,16 @@ function EncounterCard({ encounter, siteColor }: { encounter: EncounterResponse;
   const hasTags = !!(encounter.health_status || encounter.behavior || encounter.setting || encounter.conditions);
   const hasNotes = !!encounter.notes;
   const hasFooter = !!(encounter.observer_nickname || encounter.survey_id || encounter.capture_count > 0);
-  const hasMore = hasTags || hasNotes || hasFooter;
+  const hasPhotos = encounter.capture_count > 0;
+  const hasMore = hasTags || hasNotes || hasFooter || hasPhotos;
+
+  // Lazy: only fetch the encounter's full detail (incl. captures) when this
+  // card is expanded.
+  const { data: detail, isLoading: detailLoading } = useQuery({
+    queryKey: ['encounter', encounter.id],
+    queryFn: () => fetchEncounterDetail(encounter.id),
+    enabled: expanded && hasPhotos,
+  });
 
   return (
     <li
@@ -792,7 +800,7 @@ function EncounterCard({ encounter, siteColor }: { encounter: EncounterResponse;
 
       {expanded && hasMore && (
         <div
-          className="px-5 pb-4 flex flex-col gap-2"
+          className="px-5 pb-4 flex flex-col gap-3"
           style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}
         >
           {hasTags && (
@@ -816,13 +824,52 @@ function EncounterCard({ encounter, siteColor }: { encounter: EncounterResponse;
               {encounter.notes}
             </p>
           )}
+          {hasPhotos && (
+            <div className="flex flex-col gap-1.5">
+              <span style={META_LABEL}>
+                Photos ({encounter.capture_count})
+              </span>
+              {detailLoading && (
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Loading…</p>
+              )}
+              {detail && detail.captures && detail.captures.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
+                  {detail.captures.map((cap) => (
+                    <a
+                      key={cap.id}
+                      href={imageUrl(cap.display_url ?? cap.display_path ?? cap.image_path)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={`${cap.image_type.replace('_', ' ')} · ${cap.original_filename}`}
+                      style={{
+                        display: 'block',
+                        aspectRatio: '1/1',
+                        overflow: 'hidden',
+                        backgroundColor: 'var(--color-bg-card)',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <img
+                        src={imageUrl(cap.thumbnail_url ?? cap.thumbnail_path ?? cap.image_path)}
+                        alt={cap.original_filename}
+                        loading="lazy"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          display: 'block',
+                        }}
+                      />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {hasFooter && (
-            <div className="flex gap-3 flex-wrap" style={META_LABEL}>
+            <div className="flex gap-3 flex-wrap pt-1" style={META_LABEL}>
               {encounter.observer_nickname && <span>Observer: {encounter.observer_nickname}</span>}
               {encounter.survey_id && <span>Survey: {encounter.survey_id}</span>}
-              {encounter.capture_count > 0 && (
-                <span>{encounter.capture_count} photo{encounter.capture_count !== 1 ? 's' : ''}</span>
-              )}
             </div>
           )}
         </div>

@@ -3,6 +3,7 @@ import type {
   ConfirmResponse,
   EncounterFormData,
   EncounterResponse,
+  EncounterDetailResponse,
   IdentifyResponse,
   NewTurtleResponse,
   SearchResponse,
@@ -109,6 +110,10 @@ export async function fetchTurtles(): Promise<TurtleResponse[]> {
 
 export async function fetchEncounters(turtleId: number): Promise<EncounterResponse[]> {
   return apiFetch<EncounterResponse[]>(`/api/turtles/${turtleId}/encounters`);
+}
+
+export async function fetchEncounterDetail(encounterId: number): Promise<EncounterDetailResponse> {
+  return apiFetch<EncounterDetailResponse>(`/api/encounters/${encounterId}`);
 }
 
 export interface CaptureLocation {

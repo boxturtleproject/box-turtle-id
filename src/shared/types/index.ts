@@ -109,6 +109,10 @@ export interface EncounterResponse {
   capture_count: number;
 }
 
+export interface EncounterDetailResponse extends EncounterResponse {
+  captures: CaptureResponse[];
+}
+
 export interface CompareResponse {
   score: number;
   is_match: boolean;
