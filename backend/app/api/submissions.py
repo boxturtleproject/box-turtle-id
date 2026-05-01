@@ -21,6 +21,7 @@ from app.schemas.submission import (
     SubmissionCandidate,
 )
 from app.services import CropperService, ImageService, SiftService
+from app.services.derivatives import DerivativesService
 from app.services.sift import SiftFeatures
 
 router = APIRouter()
@@ -199,7 +200,8 @@ async def identify(
                 score=round(score, 1),
                 confidence=_score_to_confidence(score),
                 visualization_url=f"/api/visualizations/{viz_filename}",
-                thumbnail_url=capture.image_path,
+                thumbnail_url=capture.thumbnail_url or capture.display_url
+                              or f"/api/static/{capture.image_path}",
             )
         )
 
@@ -342,7 +344,13 @@ def _create_captures_from_submission(
     cropper: CropperService,
     image_svc: ImageService,
 ):
-    """Move submission images to permanent storage and create Capture records."""
+    """Move submission images to permanent storage and create Capture records.
+
+    For each image: saves the original, extracts SIFT features (cropped+resized),
+    creates a Capture row, then generates thumb+display derivatives via the
+    storage backend (Railway bucket in prod, local /api/static in dev).
+    """
+    derivatives = DerivativesService(db)
     image_map = [
         (submission.top_image_path, "carapace_top", "top.jpg"),
         (submission.left_image_path, "carapace_left", "left.jpg"),
@@ -361,11 +369,8 @@ def _create_captures_from_submission(
         if img is None:
             continue
 
-        # Save to permanent images directory
         perm_path = image_svc.save(img)
-        thumbnail_path = image_svc.generate_thumbnail(img)
 
-        # Extract SIFT features for matching
         kp_bytes = None
         desc_bytes = None
         kp_count = 0
@@ -380,13 +385,15 @@ def _create_captures_from_submission(
             encounter_id=encounter_id,
             image_type=image_type,
             image_path=perm_path,
-            thumbnail_path=thumbnail_path,
             original_filename=default_name,
             keypoints_data=kp_bytes,
             descriptors_data=desc_bytes,
             keypoint_count=kp_count,
+            source="app",
         )
         db.add(capture)
+        db.flush()  # get capture.id for derivative naming
+        derivatives.generate_for_capture(capture)
 
     # Handle other images from submission
     if submission.other_image_paths:
@@ -404,14 +411,14 @@ def _create_captures_from_submission(
                 continue
 
             perm_path = image_svc.save(img)
-            thumbnail_path = image_svc.generate_thumbnail(img)
-
             capture = Capture(
                 turtle_id=turtle_id,
                 encounter_id=encounter_id,
                 image_type="other",
                 image_path=perm_path,
-                thumbnail_path=thumbnail_path,
                 original_filename=f"other_{i}.jpg",
+                source="app",
             )
             db.add(capture)
+            db.flush()
+            derivatives.generate_for_capture(capture)
