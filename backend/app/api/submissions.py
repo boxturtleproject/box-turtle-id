@@ -232,6 +232,7 @@ async def identify(
             f.result()
 
     # Build candidate list from best scores
+    candidates: list[SubmissionCandidate] = []
     for tid, score in best_scores.items():
         qf, db_features, capture, qi = best_viz_data[tid]
 
