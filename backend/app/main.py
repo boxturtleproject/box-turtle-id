@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -86,6 +86,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Bucket-backed derivative redirect: when the storage backend is S3, serve
+# /api/static/captures/derivatives/* by 302-ing to a signed bucket URL. Local
+# files (everything else under /api/static) continue to be served by the
+# StaticFiles mount below. Defined BEFORE the static mount so it takes
+# precedence on this prefix.
+@app.get("/api/static/captures/derivatives/{path:path}")
+async def derivatives_passthrough(path: str):
+    from fastapi.responses import RedirectResponse
+    from app.services.storage import S3Storage, get_storage
+
+    storage = get_storage()
+    key = f"captures/derivatives/{path}"
+    if isinstance(storage, S3Storage):
+        url = storage.signed_url(key, expires_in=3600)
+        return RedirectResponse(url, status_code=302)
+    # Local backend: fall through to the static mount by reading the file directly
+    file_path = settings.data_dir / key
+    if file_path.is_file():
+        return FileResponse(file_path)
+    return Response(status_code=404)
+
 
 if settings.data_dir.exists():
     app.mount("/api/static", StaticFiles(directory=str(settings.data_dir)), name="static")

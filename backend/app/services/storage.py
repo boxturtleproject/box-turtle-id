@@ -51,6 +51,7 @@ class S3Storage:
             endpoint_url=settings.bucket_endpoint,
             aws_access_key_id=settings.bucket_access_key_id,
             aws_secret_access_key=settings.bucket_secret_access_key,
+            region_name="auto",
         )
         self.bucket = settings.bucket_name
         self.public_url = (settings.bucket_public_url or "").rstrip("/")
@@ -61,6 +62,14 @@ class S3Storage:
         )
         url = f"{self.public_url}/{key}" if self.public_url else None
         return key, url
+
+    def signed_url(self, key: str, expires_in: int = 3600) -> str:
+        """Generate a time-limited URL for a private object."""
+        return self._client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": self.bucket, "Key": key},
+            ExpiresIn=expires_in,
+        )
 
 
 _singleton: Optional[StorageBackend] = None
