@@ -77,10 +77,12 @@ export default function TurtleProfile() {
     enabled: !isNaN(turtleId),
   });
 
+  const [encountersOpen, setEncountersOpen] = useState(false);
   const { data: encounters, isLoading: encountersLoading } = useQuery({
     queryKey: ['encounters', turtleId],
     queryFn: () => fetchEncounters(turtleId),
-    enabled: !isNaN(turtleId),
+    // Lazy: only fetch the encounter list when the section is expanded.
+    enabled: !isNaN(turtleId) && encountersOpen,
   });
 
   if (turtleLoading) {
@@ -124,6 +126,9 @@ export default function TurtleProfile() {
           encounters={encounters}
           loading={encountersLoading}
           siteColor={siteColor}
+          totalCount={turtle.encounter_count ?? 0}
+          isOpen={encountersOpen}
+          onToggle={() => setEncountersOpen((v) => !v)}
         />
       </div>
     </div>
@@ -641,109 +646,187 @@ function NavArrow({ direction, onClick }: { direction: 'prev' | 'next'; onClick:
 }
 
 function EncountersBlock({
-  encounters, loading, siteColor,
-}: { encounters: EncounterResponse[] | undefined; loading: boolean; siteColor: string }) {
+  encounters, loading, siteColor, totalCount, isOpen, onToggle,
+}: {
+  encounters: EncounterResponse[] | undefined;
+  loading: boolean;
+  siteColor: string;
+  totalCount: number;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <Section label={`Encounters${encounters ? ` (${encounters.length})` : ''}`}>
-      {loading && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Loading…</p>
+    <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center justify-between gap-3 w-full text-left"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          cursor: 'pointer',
+        }}
+      >
+        <span style={SECTION_LABEL}>
+          Encounters ({totalCount})
+        </span>
+        <span
+          aria-hidden
+          style={{
+            ...META_LABEL,
+            color: 'var(--color-text-muted)',
+            transition: 'transform 0.15s',
+            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            display: 'inline-block',
+          }}
+        >
+          ▾
+        </span>
+      </button>
+
+      {isOpen && (
+        <>
+          {loading && (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Loading…</p>
+          )}
+          {encounters && encounters.length === 0 && (
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+              No encounters recorded.
+            </p>
+          )}
+          {encounters && encounters.length > 0 && (
+            <ul className="flex flex-col gap-3">
+              {encounters.map((enc) => (
+                <EncounterCard key={enc.id} encounter={enc} siteColor={siteColor} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
-      {encounters && encounters.length === 0 && (
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
-          No encounters recorded.
-        </p>
-      )}
-      {encounters && encounters.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {encounters.map((enc) => (
-            <EncounterCard key={enc.id} encounter={enc} siteColor={siteColor} />
-          ))}
-        </ul>
-      )}
-    </Section>
+    </div>
   );
 }
 
 function EncounterCard({ encounter, siteColor }: { encounter: EncounterResponse; siteColor: string }) {
+  const [expanded, setExpanded] = useState(false);
   const date = formatDate(encounter.encounter_date);
+  const hasTags = !!(encounter.health_status || encounter.behavior || encounter.setting || encounter.conditions);
+  const hasNotes = !!encounter.notes;
+  const hasFooter = !!(encounter.observer_nickname || encounter.survey_id || encounter.capture_count > 0);
+  const hasMore = hasTags || hasNotes || hasFooter;
+
   return (
     <li
       style={{
         backgroundColor: 'var(--color-bg)',
         border: '1px solid var(--color-border)',
         borderLeft: `3px solid ${siteColor}`,
-        padding: '1rem 1.25rem',
       }}
     >
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <div className="flex items-baseline gap-3">
-          <span
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 700,
-              fontSize: '1rem',
-              letterSpacing: '0.04em',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            {date}
-          </span>
-          {encounter.external_id && (
+      <button
+        type="button"
+        onClick={() => hasMore && setExpanded((v) => !v)}
+        className="w-full text-left"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: '1rem 1.25rem',
+          cursor: hasMore ? 'pointer' : 'default',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.25rem',
+        }}
+      >
+        <div className="flex items-baseline justify-between gap-3 flex-wrap">
+          <div className="flex items-baseline gap-3">
             <span
               style={{
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.65rem',
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: 'var(--color-text-muted)',
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 700,
+                fontSize: '1rem',
+                letterSpacing: '0.04em',
+                color: 'var(--color-text-primary)',
               }}
             >
-              {encounter.external_id}
+              {date}
             </span>
-          )}
+            {encounter.external_id && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.65rem',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
+                {encounter.external_id}
+              </span>
+            )}
+          </div>
+          <div className="flex gap-3 items-baseline">
+            {encounter.identified && <Badge label={encounter.identified} />}
+            {encounter.plot_name && (
+              <span style={{ ...META_LABEL, color: siteColor, fontWeight: 600 }}>
+                {encounter.plot_name}
+              </span>
+            )}
+            {hasMore && (
+              <span
+                aria-hidden
+                style={{
+                  ...META_LABEL,
+                  color: 'var(--color-text-muted)',
+                  transition: 'transform 0.15s',
+                  transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                }}
+              >
+                ▾
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex gap-3 items-baseline">
-          {encounter.identified && (
-            <Badge label={encounter.identified} />
-          )}
-          {encounter.plot_name && (
-            <span style={{ ...META_LABEL, color: siteColor, fontWeight: 600 }}>
-              {encounter.plot_name}
-            </span>
-          )}
-        </div>
-      </div>
+      </button>
 
-      {/* Tag row */}
-      {(encounter.health_status || encounter.behavior || encounter.setting || encounter.conditions) && (
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5">
-          {encounter.health_status && <TagPair label="Health" value={encounter.health_status} />}
-          {encounter.behavior && <TagPair label="Behavior" value={encounter.behavior} />}
-          {encounter.setting && <TagPair label="Setting" value={encounter.setting} />}
-          {encounter.conditions && <TagPair label="Conditions" value={encounter.conditions} />}
-        </div>
-      )}
-
-      {encounter.notes && (
-        <p
-          className="mt-2"
-          style={{
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.85rem',
-            lineHeight: 1.5,
-            color: 'var(--color-text-primary)',
-            whiteSpace: 'pre-wrap',
-          }}
+      {expanded && hasMore && (
+        <div
+          className="px-5 pb-4 flex flex-col gap-2"
+          style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.875rem' }}
         >
-          {encounter.notes}
-        </p>
+          {hasTags && (
+            <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {encounter.health_status && <TagPair label="Health" value={encounter.health_status} />}
+              {encounter.behavior && <TagPair label="Behavior" value={encounter.behavior} />}
+              {encounter.setting && <TagPair label="Setting" value={encounter.setting} />}
+              {encounter.conditions && <TagPair label="Conditions" value={encounter.conditions} />}
+            </div>
+          )}
+          {hasNotes && (
+            <p
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.85rem',
+                lineHeight: 1.5,
+                color: 'var(--color-text-primary)',
+                whiteSpace: 'pre-wrap',
+              }}
+            >
+              {encounter.notes}
+            </p>
+          )}
+          {hasFooter && (
+            <div className="flex gap-3 flex-wrap" style={META_LABEL}>
+              {encounter.observer_nickname && <span>Observer: {encounter.observer_nickname}</span>}
+              {encounter.survey_id && <span>Survey: {encounter.survey_id}</span>}
+              {encounter.capture_count > 0 && (
+                <span>{encounter.capture_count} photo{encounter.capture_count !== 1 ? 's' : ''}</span>
+              )}
+            </div>
+          )}
+        </div>
       )}
-
-      <div className="mt-2 flex gap-3" style={META_LABEL}>
-        {encounter.observer_nickname && <span>Observer: {encounter.observer_nickname}</span>}
-        {encounter.survey_id && <span>Survey: {encounter.survey_id}</span>}
-        {encounter.capture_count > 0 && <span>{encounter.capture_count} photo{encounter.capture_count !== 1 ? 's' : ''}</span>}
-      </div>
     </li>
   );
 }
