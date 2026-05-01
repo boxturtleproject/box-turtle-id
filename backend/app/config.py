@@ -31,8 +31,10 @@ class Settings(BaseSettings):
     # Airtable sync
     airtable_token: Optional[str] = None
     airtable_base_id: Optional[str] = None
-    airtable_turtles_table: Optional[str] = None
-    airtable_encounters_table: Optional[str] = None
+    airtable_turtles_table: str = "Turtles"
+    airtable_encounters_table: str = "Encounters"
+    airtable_surveys_table: str = "Surveys"
+    airtable_plots_table: str = "Plots"
 
     # App
     environment: str = "development"
