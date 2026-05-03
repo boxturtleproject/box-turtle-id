@@ -39,9 +39,12 @@ const PAGE_SIZE = 25;
 export default function Encounters() {
   const [turtleFilter, setTurtleFilter] = useState<number | 'all'>('all');
   const [page, setPage] = useState(0);
+  const [selectedEncounterId, setSelectedEncounterId] = useState<number | null>(null);
 
   // Reset to page 0 whenever the filter changes
   useEffect(() => { setPage(0); }, [turtleFilter]);
+  // Clear selection when the filter changes
+  useEffect(() => { setSelectedEncounterId(null); }, [turtleFilter, page]);
 
   const { data: paged, isLoading, error } = useQuery({
     queryKey: ['all-encounters', turtleFilter, page],
@@ -109,7 +112,17 @@ export default function Encounters() {
         <EncountersMap
           locations={locations}
           turtleFilter={turtleFilter}
+          encounterFilter={selectedEncounterId}
           sectionLabelStyle={SECTION_LABEL}
+          onClearEncounterFilter={() => setSelectedEncounterId(null)}
+          onPickEncounter={(id) => {
+            setSelectedEncounterId(id);
+            // Scroll to the card if it's on the current page
+            requestAnimationFrame(() => {
+              const el = document.getElementById(`encounter-card-${id}`);
+              el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+          }}
         />
 
         {/* Turtle filter */}
@@ -151,6 +164,10 @@ export default function Encounters() {
                     external_id: enc.turtle_external_id,
                     name: enc.turtle_name,
                   }}
+                  selected={selectedEncounterId === enc.id}
+                  onSelect={() =>
+                    setSelectedEncounterId((prev) => (prev === enc.id ? null : enc.id))
+                  }
                 />
               ))}
             </ul>
@@ -300,11 +317,15 @@ function TurtleFilterBar({
 }
 
 function EncountersMap({
-  locations, turtleFilter, sectionLabelStyle,
+  locations, turtleFilter, encounterFilter, sectionLabelStyle,
+  onClearEncounterFilter, onPickEncounter,
 }: {
   locations: CaptureLocation[] | undefined;
   turtleFilter: number | 'all';
+  encounterFilter: number | null;
   sectionLabelStyle: CSSProperties;
+  onClearEncounterFilter: () => void;
+  onPickEncounter: (encounterId: number) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -331,9 +352,12 @@ function EncountersMap({
 
   const filtered = useMemo(() => {
     if (!locations) return undefined;
-    if (turtleFilter === 'all') return locations;
-    return locations.filter((l) => l.turtle_id === turtleFilter);
-  }, [locations, turtleFilter]);
+    return locations.filter((l) => {
+      if (turtleFilter !== 'all' && l.turtle_id !== turtleFilter) return false;
+      if (encounterFilter !== null && l.encounter_id !== encounterFilter) return false;
+      return true;
+    });
+  }, [locations, turtleFilter, encounterFilter]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -357,15 +381,31 @@ function EncountersMap({
         const titleLine = loc.turtle_name
           ? `<strong>${loc.turtle_name}</strong> <span style="color:#888">${loc.turtle_external_id}</span>`
           : `<strong>${loc.turtle_external_id}</strong>`;
+        const encounterLine = loc.encounter_id !== null
+          ? `<a href="#encounter-card-${loc.encounter_id}" data-encounter-id="${loc.encounter_id}"
+                style="font-size:11px;color:${color};text-decoration:none;font-weight:600;letter-spacing:0.05em">
+               ${loc.encounter_external_id ?? `Encounter #${loc.encounter_id}`} →
+             </a>`
+          : '';
         const popup = new mapboxgl.Popup({ closeButton: false, offset: 10 }).setHTML(`
-          <div style="font-family:var(--font-body),system-ui;font-size:12px;min-width:160px">
+          <div style="font-family:var(--font-body),system-ui;font-size:12px;min-width:180px">
             ${loc.thumbnail_url ? `<img src="${imageUrl(loc.thumbnail_url)}" style="width:100%;height:100px;object-fit:cover;display:block;margin-bottom:6px">` : ''}
             <div style="margin-bottom:3px">${titleLine}</div>
-            <div style="font-size:10px;color:#666;letter-spacing:0.1em;text-transform:uppercase">
+            <div style="font-size:10px;color:#666;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">
               ${loc.image_type.replace('_', ' ')} · ${loc.captured_date ?? '—'}
             </div>
+            ${encounterLine}
           </div>
         `);
+        popup.on('open', () => {
+          const root = popup.getElement();
+          const link = root?.querySelector<HTMLAnchorElement>('a[data-encounter-id]');
+          link?.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            const id = Number(link.dataset.encounterId);
+            if (!isNaN(id)) onPickEncounter(id);
+          });
+        });
         const m = new mapboxgl.Marker({ element: el, anchor: 'center' })
           .setLngLat([loc.longitude, loc.latitude])
           .setPopup(popup)
@@ -380,16 +420,44 @@ function EncountersMap({
 
     if (map.loaded()) addMarkers();
     else map.once('load', addMarkers);
-  }, [filtered]);
+  }, [filtered, onPickEncounter]);
 
   const total = locations?.length ?? 0;
   const shown = filtered?.length ?? 0;
 
   return (
     <div className="flex flex-col gap-3">
-      <span style={sectionLabelStyle}>
-        Map ({shown}{shown !== total && total ? ` of ${total}` : ''})
-      </span>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <span style={sectionLabelStyle}>
+          Map ({shown}{shown !== total && total ? ` of ${total}` : ''})
+        </span>
+        {encounterFilter !== null && (
+          <button
+            type="button"
+            onClick={onClearEncounterFilter}
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: '#fff',
+              backgroundColor: 'var(--color-btn-primary-bg)',
+              border: 'none',
+              padding: '0.45rem 0.875rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-btn-primary-bg-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-btn-primary-bg)')}
+          >
+            <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>×</span>
+            Clear encounter
+          </button>
+        )}
+      </div>
       <div
         ref={containerRef}
         style={{

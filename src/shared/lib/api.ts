@@ -190,6 +190,7 @@ export interface CaptureLocation {
   id: number;
   turtle_id: number;
   encounter_id: number | null;
+  encounter_external_id: string | null;
   image_type: string;
   captured_date: string | null;
   latitude: number;

@@ -147,8 +147,10 @@ async def list_capture_locations(
             Turtle.external_id,
             Turtle.name,
             Turtle.site,
+            Encounter.external_id,
         )
         .join(Turtle, Capture.turtle_id == Turtle.id)
+        .outerjoin(Encounter, Capture.encounter_id == Encounter.id)
         .filter(Capture.latitude.isnot(None))
         .filter(Capture.longitude.isnot(None))
     )
@@ -169,6 +171,7 @@ async def list_capture_locations(
             "turtle_external_id": r[9],
             "turtle_name": r[10],
             "site": r[11],
+            "encounter_external_id": r[12],
         })
     return rows
 

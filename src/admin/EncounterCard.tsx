@@ -22,10 +22,24 @@ interface EncounterCardProps {
   siteColor: string;
   /** When set, renders a small turtle context line (id + nickname) and links to the turtle profile. */
   turtleContext?: { id: number; external_id: string; name: string | null };
+  /** When true, the card is highlighted (used by /admin/encounters to mark the current map filter). */
+  selected?: boolean;
+  /** Called on header click. When provided, the card no longer manages its own
+   * expanded state — the parent decides via `selected`. */
+  onSelect?: () => void;
 }
 
-export function EncounterCard({ encounter, siteColor, turtleContext }: EncounterCardProps) {
-  const [expanded, setExpanded] = useState(false);
+export function EncounterCard({
+  encounter, siteColor, turtleContext, selected, onSelect,
+}: EncounterCardProps) {
+  const [internalExpanded, setInternalExpanded] = useState(false);
+  // When the parent owns selection (onSelect provided), drive expansion off
+  // selected so the card opens when its pins are showing on the map.
+  const expanded = onSelect ? !!selected : internalExpanded;
+  const setExpanded = (v: boolean) => {
+    if (onSelect) return; // parent owns it
+    setInternalExpanded(v);
+  };
   const date = formatDate(encounter.encounter_date);
   const hasTags = !!(encounter.health_status || encounter.behavior || encounter.setting || encounter.conditions);
   const hasNotes = !!encounter.notes;
@@ -41,21 +55,27 @@ export function EncounterCard({ encounter, siteColor, turtleContext }: Encounter
 
   return (
     <li
+      id={`encounter-card-${encounter.id}`}
       style={{
-        backgroundColor: 'var(--color-bg)',
-        border: '1px solid var(--color-border)',
+        backgroundColor: selected ? '#fffbe6' : 'var(--color-bg)',
+        border: `1px solid ${selected ? '#d4a017' : 'var(--color-border)'}`,
         borderLeft: `3px solid ${siteColor}`,
+        scrollMarginTop: '1rem',
+        transition: 'background-color 0.15s, border-color 0.15s',
       }}
     >
       <button
         type="button"
-        onClick={() => hasMore && setExpanded((v) => !v)}
+        onClick={() => {
+          if (onSelect) onSelect();
+          else if (hasMore) setExpanded(!expanded);
+        }}
         className="w-full text-left"
         style={{
           background: 'transparent',
           border: 'none',
           padding: '1rem 1.25rem',
-          cursor: hasMore ? 'pointer' : 'default',
+          cursor: (onSelect || hasMore) ? 'pointer' : 'default',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.35rem',
