@@ -33,15 +33,15 @@ def get_services():
 async def list_all_encounters(
     turtle_id: Optional[int] = Query(None, description="Restrict to one turtle"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(200, ge=1, le=1000),
+    limit: int = Query(25, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    """List encounters newest-first, with turtle context + capture count.
+    """Paginated list of encounters newest-first, with turtle context.
 
-    Returns enough information for an admin list view (date, plot, badges,
-    notes, observer, capture count, plus the turtle's external_id and name)
-    in one query — uses a left join + a correlated count subquery so we
-    avoid the N+1 pattern.
+    Returns {items, total, skip, limit}. Each item carries enough information
+    for the admin list view (date, plot, badges, capture count) plus the
+    turtle's external_id/name/site so the row can render context without a
+    second fetch. Uses a single join + correlated count subquery; no N+1.
     """
     from sqlalchemy import select
 
@@ -51,6 +51,11 @@ async def list_all_encounters(
         .correlate(Encounter)
         .scalar_subquery()
     )
+
+    base_filter = db.query(Encounter)
+    if turtle_id is not None:
+        base_filter = base_filter.filter(Encounter.turtle_id == turtle_id)
+    total = base_filter.count()
 
     q = (
         db.query(
@@ -67,9 +72,9 @@ async def list_all_encounters(
         q = q.filter(Encounter.turtle_id == turtle_id)
 
     rows = q.offset(skip).limit(limit).all()
-    out = []
+    items = []
     for enc, ext_id, name, site, cap_count in rows:
-        out.append({
+        items.append({
             "id": enc.id,
             "turtle_id": enc.turtle_id,
             "turtle_external_id": ext_id,
@@ -90,7 +95,7 @@ async def list_all_encounters(
             "longitude": enc.longitude,
             "capture_count": cap_count or 0,
         })
-    return out
+    return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/turtles/next-id")

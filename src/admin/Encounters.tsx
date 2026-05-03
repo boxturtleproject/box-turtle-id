@@ -34,12 +34,23 @@ const SECTION_LABEL: CSSProperties = {
   textTransform: 'uppercase',
 };
 
+const PAGE_SIZE = 25;
+
 export default function Encounters() {
   const [turtleFilter, setTurtleFilter] = useState<number | 'all'>('all');
+  const [page, setPage] = useState(0);
 
-  const { data: encounters, isLoading, error } = useQuery({
-    queryKey: ['all-encounters'],
-    queryFn: () => fetchAllEncounters(),
+  // Reset to page 0 whenever the filter changes
+  useEffect(() => { setPage(0); }, [turtleFilter]);
+
+  const { data: paged, isLoading, error } = useQuery({
+    queryKey: ['all-encounters', turtleFilter, page],
+    queryFn: () => fetchAllEncounters({
+      turtleId: turtleFilter === 'all' ? undefined : turtleFilter,
+      skip: page * PAGE_SIZE,
+      limit: PAGE_SIZE,
+    }),
+    placeholderData: (prev) => prev, // keep showing previous page while next loads
   });
 
   const { data: locations } = useQuery({
@@ -47,29 +58,31 @@ export default function Encounters() {
     queryFn: () => fetchCaptureLocations(),
   });
 
-  // Distinct turtles that have at least one encounter, sorted by external_id
+  // Turtle dropdown comes from the location endpoint so it shows every turtle
+  // that exists in the system (one paginated encounter request would only see
+  // the current page's turtles).
   const turtleOptions = useMemo(() => {
-    if (!encounters) return [];
+    if (!locations) return [];
     const byTurtle: Record<number, { id: number; label: string; site: string | null; count: number }> = {};
-    for (const enc of encounters) {
-      const existing = byTurtle[enc.turtle_id];
+    for (const loc of locations) {
+      const existing = byTurtle[loc.turtle_id];
       if (existing) {
         existing.count += 1;
       } else {
-        const label = enc.turtle_name
-          ? `${enc.turtle_external_id} · ${enc.turtle_name}`
-          : enc.turtle_external_id;
-        byTurtle[enc.turtle_id] = { id: enc.turtle_id, label, site: enc.site, count: 1 };
+        const label = loc.turtle_name
+          ? `${loc.turtle_external_id} · ${loc.turtle_name}`
+          : loc.turtle_external_id;
+        byTurtle[loc.turtle_id] = { id: loc.turtle_id, label, site: loc.site, count: 1 };
       }
     }
     return Object.values(byTurtle).sort((a, b) => a.label.localeCompare(b.label));
-  }, [encounters]);
+  }, [locations]);
 
-  const filteredEncounters = useMemo(() => {
-    if (!encounters) return [];
-    if (turtleFilter === 'all') return encounters;
-    return encounters.filter((e) => e.turtle_id === turtleFilter);
-  }, [encounters, turtleFilter]);
+  const items = paged?.items ?? [];
+  const total = paged?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const fromIdx = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const toIdx = Math.min(total, (page + 1) * PAGE_SIZE);
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: 'var(--color-bg-card)' }}>
@@ -108,28 +121,27 @@ export default function Encounters() {
 
         {/* Encounter list */}
         <div className="flex flex-col gap-3">
-          <span style={SECTION_LABEL}>
-            Encounters
-            {filteredEncounters && (
-              <span style={{ marginLeft: '0.625rem', color: 'var(--color-text-secondary)' }}>
-                ({filteredEncounters.length}
-                {turtleFilter !== 'all' && encounters && filteredEncounters.length !== encounters.length
-                  ? ` of ${encounters.length}`
-                  : ''})
-              </span>
-            )}
-          </span>
+          <div className="flex items-baseline justify-between gap-3 flex-wrap">
+            <span style={SECTION_LABEL}>
+              Encounters
+              {paged && (
+                <span style={{ marginLeft: '0.625rem', color: 'var(--color-text-secondary)' }}>
+                  ({total === 0 ? '0' : `${fromIdx}–${toIdx} of ${total}`})
+                </span>
+              )}
+            </span>
+          </div>
           {error && (
             <p style={{ color: 'var(--color-text-error)', fontSize: '0.85rem' }}>
               Error: {(error as Error).message}
             </p>
           )}
-          {isLoading && (
+          {isLoading && !paged && (
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Loading…</p>
           )}
-          {filteredEncounters && filteredEncounters.length > 0 && (
+          {items.length > 0 && (
             <ul className="flex flex-col gap-3">
-              {filteredEncounters.map((enc) => (
+              {items.map((enc) => (
                 <EncounterCard
                   key={enc.id}
                   encounter={enc}
@@ -143,13 +155,75 @@ export default function Encounters() {
               ))}
             </ul>
           )}
-          {filteredEncounters && filteredEncounters.length === 0 && !isLoading && (
+          {paged && items.length === 0 && !isLoading && (
             <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>
               No encounters match those filters.
             </p>
           )}
+
+          {/* Pagination */}
+          {paged && total > PAGE_SIZE && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onChange={(p) => {
+                setPage(p);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              loading={isLoading}
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function Pagination({
+  page, totalPages, onChange, loading,
+}: { page: number; totalPages: number; onChange: (p: number) => void; loading: boolean }) {
+  const canPrev = page > 0;
+  const canNext = page < totalPages - 1;
+  const btnStyle = (enabled: boolean): CSSProperties => ({
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    letterSpacing: '0.18em',
+    textTransform: 'uppercase',
+    color: enabled ? 'var(--color-text-primary)' : 'var(--color-text-disabled)',
+    backgroundColor: 'var(--color-bg)',
+    border: '1px solid var(--color-border)',
+    padding: '0.55rem 1rem',
+    cursor: enabled ? 'pointer' : 'not-allowed',
+  });
+  return (
+    <div className="flex items-center justify-between mt-2">
+      <button
+        type="button"
+        disabled={!canPrev || loading}
+        onClick={() => canPrev && onChange(page - 1)}
+        style={btnStyle(canPrev && !loading)}
+      >
+        ← Previous
+      </button>
+      <span style={{
+        fontFamily: 'var(--font-body)',
+        fontSize: '0.7rem',
+        letterSpacing: '0.2em',
+        textTransform: 'uppercase',
+        color: 'var(--color-text-muted)',
+      }}>
+        Page {page + 1} of {totalPages}
+        {loading && <span style={{ marginLeft: '0.625rem' }}>· loading…</span>}
+      </span>
+      <button
+        type="button"
+        disabled={!canNext || loading}
+        onClick={() => canNext && onChange(page + 1)}
+        style={btnStyle(canNext && !loading)}
+      >
+        Next →
+      </button>
     </div>
   );
 }

@@ -126,9 +126,24 @@ export interface EncounterListItem extends EncounterResponse {
   longitude: number | null;
 }
 
-export async function fetchAllEncounters(turtleId?: number): Promise<EncounterListItem[]> {
-  const qs = turtleId !== undefined ? `?turtle_id=${turtleId}` : '';
-  return apiFetch<EncounterListItem[]>(`/api/encounters${qs}`);
+export interface PagedEncounters {
+  items: EncounterListItem[];
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export async function fetchAllEncounters(opts: {
+  turtleId?: number;
+  skip?: number;
+  limit?: number;
+} = {}): Promise<PagedEncounters> {
+  const params = new URLSearchParams();
+  if (opts.turtleId !== undefined) params.set('turtle_id', String(opts.turtleId));
+  if (opts.skip !== undefined) params.set('skip', String(opts.skip));
+  if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  return apiFetch<PagedEncounters>(`/api/encounters${qs ? `?${qs}` : ''}`);
 }
 
 export async function suggestNextTurtleId(): Promise<{ external_id: string }> {
