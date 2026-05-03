@@ -48,11 +48,28 @@ class TurtleCreate(BaseModel):
 
 
 class TurtleUpdate(BaseModel):
-    """Request schema for updating a turtle."""
+    """Request schema for updating a turtle.
 
-    name: Optional[str] = None
-    notes: Optional[str] = None
+    All fields optional — only the ones supplied are touched. external_id is
+    validated against the existing-id collision in the endpoint.
+    """
+
     external_id: Optional[str] = None
+    name: Optional[str] = None
+    nickname: Optional[str] = None
+    notes: Optional[str] = None
+    site: Optional[str] = None
+    species: Optional[str] = None
+    gender: Optional[str] = None
+    pattern: Optional[str] = None
+    carapace_flare: Optional[str] = None
+    health_status: Optional[str] = None
+    residence_status: Optional[str] = None
+    identifying_marks: Optional[str] = None
+    eye_color: Optional[str] = None
+    plastron_depression: Optional[str] = None
+    plots_text: Optional[str] = None
+    first_seen: Optional[date] = None
 
 
 class TurtleResponse(BaseModel):

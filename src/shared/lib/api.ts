@@ -73,6 +73,7 @@ export async function submitNewTurtle(
   nickname: string,
   encounterData: EncounterFormData,
   site: string,
+  externalId?: string | null,
 ): Promise<NewTurtleResponse> {
   return apiFetch<NewTurtleResponse>(`/api/submissions/${submissionId}/new-turtle`, {
     method: 'POST',
@@ -80,6 +81,7 @@ export async function submitNewTurtle(
     body: JSON.stringify({
       nickname,
       site,
+      external_id: externalId ?? null,
       encounter_data: {
         date: encounterData.date,
         location: encounterData.location,
@@ -114,6 +116,46 @@ export async function fetchEncounters(turtleId: number): Promise<EncounterRespon
 
 export async function fetchEncounterDetail(encounterId: number): Promise<EncounterDetailResponse> {
   return apiFetch<EncounterDetailResponse>(`/api/encounters/${encounterId}`);
+}
+
+export async function suggestNextTurtleId(): Promise<{ external_id: string }> {
+  return apiFetch<{ external_id: string }>('/api/turtles/next-id');
+}
+
+export async function checkTurtleId(
+  externalId: string,
+  excludeTurtleId?: number,
+): Promise<{ external_id: string; available: boolean; claimed_by_turtle_id: number | null }> {
+  const params = new URLSearchParams({ external_id: externalId });
+  if (excludeTurtleId !== undefined) params.set('exclude_turtle_id', String(excludeTurtleId));
+  return apiFetch(`/api/turtles/check-id?${params}`);
+}
+
+export type TurtleUpdate = {
+  external_id?: string;
+  name?: string;
+  nickname?: string;
+  notes?: string;
+  site?: string;
+  species?: string;
+  gender?: string;
+  pattern?: string;
+  carapace_flare?: string;
+  health_status?: string;
+  residence_status?: string;
+  identifying_marks?: string;
+  eye_color?: string;
+  plastron_depression?: string;
+  plots_text?: string;
+  first_seen?: string;
+};
+
+export async function updateTurtle(turtleId: number, data: TurtleUpdate): Promise<TurtleResponse> {
+  return apiFetch<TurtleResponse>(`/api/turtles/${turtleId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
 }
 
 export interface CaptureLocation {

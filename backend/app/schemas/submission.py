@@ -48,6 +48,10 @@ class NewTurtleRequest(BaseModel):
     nickname: str
     encounter_data: EncounterFormData
     site: str
+    # User-chosen turtle id like "T119". Optional — when omitted the server
+    # auto-suggests the next sequential T-number. When provided it must be
+    # non-empty and not already in use.
+    external_id: Optional[str] = None
 
 
 class NewTurtleResponse(BaseModel):

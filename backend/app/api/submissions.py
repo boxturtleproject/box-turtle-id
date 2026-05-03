@@ -62,6 +62,32 @@ def _get_features(capture: Capture) -> Optional[SiftFeatures]:
 _MATCH_WORKERS = 4
 
 
+def _suggest_next_turtle_id(db: Session) -> str:
+    """Return the next unused TXXX-style external id.
+
+    Walks the existing T### ids, picks the highest numeric suffix, and bumps
+    it. Falls back to T001 when none exist. Always re-checks the proposed id
+    isn't claimed before returning.
+    """
+    import re
+    pattern = re.compile(r"^T(\d+)$")
+    max_num = 0
+    for (eid,) in db.query(Turtle.external_id).filter(Turtle.external_id.isnot(None)).all():
+        m = pattern.match(eid or "")
+        if m:
+            try:
+                max_num = max(max_num, int(m.group(1)))
+            except ValueError:
+                continue
+    candidate_num = max_num + 1
+    # Defensive loop in case of a non-T-pattern id collision
+    while True:
+        candidate = f"T{candidate_num:03d}"
+        if not db.query(Turtle).filter(Turtle.external_id == candidate).first():
+            return candidate
+        candidate_num += 1
+
+
 def _load_capture_image_for_viz(capture: Capture, image_svc: ImageService):
     """Load an image for SIFT visualization at the SIFT resolution.
 
@@ -383,10 +409,19 @@ async def new_turtle_from_submission(
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
 
-    # Generate external_id: find max existing and increment
-    last_turtle = db.query(Turtle).order_by(Turtle.id.desc()).first()
-    next_num = (last_turtle.id + 1) if last_turtle else 1
-    external_id = f"T{next_num:03d}"
+    # Resolve the user-facing turtle id. If the user provided one on the form,
+    # validate uniqueness; otherwise auto-suggest the next T-number.
+    requested_id = (request.external_id or "").strip()
+    if requested_id:
+        clash = db.query(Turtle).filter(Turtle.external_id == requested_id).first()
+        if clash:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Turtle ID '{requested_id}' is already in use",
+            )
+        external_id = requested_id
+    else:
+        external_id = _suggest_next_turtle_id(db)
 
     # Create turtle
     turtle = Turtle(

@@ -1,9 +1,9 @@
 // src/public/NewTurtleSubmissionPage.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useSite } from '../shared/context/SiteContext';
-import { submitNewTurtle } from '../shared/lib/api';
+import { submitNewTurtle, suggestNextTurtleId, checkTurtleId } from '../shared/lib/api';
 import { SiteBand } from '../shared/components/SiteBand';
 import { Footer } from '../shared/components/Footer';
 import {
@@ -75,13 +75,44 @@ export function NewTurtleSubmissionPage() {
   const [encounterData, setEncounterData] = useState<EncounterFormData>(defaultEncounterFormData());
   const [submitHovered, setSubmitHovered] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [turtleId, setTurtleId] = useState('');
+  const [turtleIdEdited, setTurtleIdEdited] = useState(false);
 
   const state = location.state as LocationState | null;
+
+  // Suggest the next T-number on mount; prefill the input until the user
+  // edits it themselves.
+  const suggestedQuery = useQuery({
+    queryKey: ['next-turtle-id'],
+    queryFn: suggestNextTurtleId,
+    staleTime: 60_000,
+  });
+  useEffect(() => {
+    if (!turtleIdEdited && suggestedQuery.data) {
+      setTurtleId(suggestedQuery.data.external_id);
+    }
+  }, [suggestedQuery.data, turtleIdEdited]);
+
+  // Live availability check (only fires while the user has typed something
+  // different from the prefill, debounced via React Query staleTime).
+  const trimmedId = turtleId.trim();
+  const checkQuery = useQuery({
+    queryKey: ['check-turtle-id', trimmedId],
+    queryFn: () => checkTurtleId(trimmedId),
+    enabled: trimmedId.length > 0
+      && (!suggestedQuery.data || trimmedId !== suggestedQuery.data.external_id),
+    staleTime: 5_000,
+  });
+
+  const idAvailable = trimmedId.length === 0
+    || (suggestedQuery.data && trimmedId === suggestedQuery.data.external_id)
+    || (checkQuery.data?.available ?? true);
+  const idChecking = checkQuery.isFetching && trimmedId.length > 0;
 
   const mutation = useMutation({
     mutationFn: () => {
       if (!state?.submissionId || !site) throw new Error('Missing submission data');
-      return submitNewTurtle(state.submissionId, encounterData.nickname, encounterData, site);
+      return submitNewTurtle(state.submissionId, encounterData.nickname, encounterData, site, trimmedId || null);
     },
     onSuccess: () => {
       navigate('/thank-you');
@@ -145,6 +176,65 @@ export function NewTurtleSubmissionPage() {
         </div>
       )}
 
+      {/* Turtle ID picker */}
+      <div className="flex flex-col gap-2">
+        <span style={labelStyle}>Turtle ID</span>
+        <input
+          type="text"
+          value={turtleId}
+          onChange={(e) => { setTurtleId(e.target.value); setTurtleIdEdited(true); }}
+          placeholder={suggestedQuery.data?.external_id ?? 'T###'}
+          autoCapitalize="characters"
+          spellCheck={false}
+          style={{
+            width: '100%',
+            padding: '0.625rem 0.75rem',
+            fontFamily: 'var(--font-body)',
+            fontSize: '0.875rem',
+            color: 'var(--color-text-primary)',
+            backgroundColor: 'var(--color-bg)',
+            border: `1px solid ${
+              !idAvailable
+                ? 'var(--color-text-error, #cc0000)'
+                : 'var(--color-border-input)'
+            }`,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+        {trimmedId && !idAvailable && (
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-error, #cc0000)',
+            fontSize: '0.75rem',
+            letterSpacing: '0.05em',
+          }}>
+            That ID is already taken. Pick a different one.
+          </span>
+        )}
+        {trimmedId && idAvailable && !idChecking && (
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.7rem',
+            letterSpacing: '0.05em',
+          }}>
+            {suggestedQuery.data && trimmedId === suggestedQuery.data.external_id
+              ? `Suggested next ID — edit if you'd like to use a different one.`
+              : `Available.`}
+          </span>
+        )}
+        {idChecking && (
+          <span style={{
+            fontFamily: 'var(--font-body)',
+            color: 'var(--color-text-muted)',
+            fontSize: '0.7rem',
+          }}>
+            Checking availability…
+          </span>
+        )}
+      </div>
+
       {/* Encounter Form */}
       <EncounterForm
         includeNickname
@@ -170,7 +260,7 @@ export function NewTurtleSubmissionPage() {
       {/* Submit */}
       <button
         type="button"
-        disabled={mutation.isPending}
+        disabled={mutation.isPending || !idAvailable || !trimmedId}
         onClick={() => mutation.mutate()}
         onMouseEnter={() => setSubmitHovered(true)}
         onMouseLeave={() => setSubmitHovered(false)}
@@ -181,8 +271,8 @@ export function NewTurtleSubmissionPage() {
           backgroundColor: submitHovered ? 'var(--color-btn-primary-bg-hover)' : 'var(--color-btn-primary-bg)',
           color: 'var(--color-btn-primary-text)',
           border: 'none',
-          cursor: mutation.isPending ? 'not-allowed' : 'pointer',
-          opacity: mutation.isPending ? 0.7 : 1,
+          cursor: (mutation.isPending || !idAvailable || !trimmedId) ? 'not-allowed' : 'pointer',
+          opacity: (mutation.isPending || !idAvailable || !trimmedId) ? 0.5 : 1,
         }}
       >
         {mutation.isPending ? 'Submitting...' : 'Submit for Review'}

@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchTurtle, fetchEncounters, fetchEncounterDetail, imageUrl } from '../shared/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchTurtle,
+  fetchEncounters,
+  fetchEncounterDetail,
+  imageUrl,
+  updateTurtle,
+  checkTurtleId,
+  type TurtleUpdate,
+} from '../shared/lib/api';
 import type { CaptureResponse, EncounterResponse, TurtleResponse } from '../shared/types';
 import { TurtleMap } from './TurtleMap';
 
@@ -79,6 +87,7 @@ export default function TurtleProfile() {
 
   const [encountersOpen, setEncountersOpen] = useState(true);
   const [encounterFilter, setEncounterFilter] = useState<number | 'all'>('all');
+  const [editing, setEditing] = useState(false);
   const { data: encounters, isLoading: encountersLoading } = useQuery({
     queryKey: ['encounters', turtleId],
     queryFn: () => fetchEncounters(turtleId),
@@ -114,7 +123,14 @@ export default function TurtleProfile() {
       <div className="max-w-5xl mx-auto px-6 pt-10 pb-16 flex flex-col gap-8">
         <BackLink />
 
-        <Header turtle={turtle} siteColor={siteColor} />
+        <Header turtle={turtle} siteColor={siteColor} onEdit={() => setEditing(true)} />
+
+        {editing && (
+          <EditTurtleModal
+            turtle={turtle}
+            onClose={() => setEditing(false)}
+          />
+        )}
 
         <DetailsBlock turtle={turtle} siteColor={siteColor} />
 
@@ -171,7 +187,10 @@ function BackLink() {
   );
 }
 
-function Header({ turtle, siteColor }: { turtle: TurtleResponse; siteColor: string }) {
+function Header({
+  turtle, siteColor, onEdit,
+}: { turtle: TurtleResponse; siteColor: string; onEdit: () => void }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div
       style={{
@@ -181,48 +200,74 @@ function Header({ turtle, siteColor }: { turtle: TurtleResponse; siteColor: stri
         padding: '1.75rem 2rem',
       }}
     >
-      <div className="flex items-baseline gap-3">
-        <span
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline gap-3">
+            <span
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.65rem',
+                letterSpacing: '0.28em',
+                textTransform: 'uppercase',
+                color: siteColor,
+                fontWeight: 600,
+              }}
+            >
+              {turtle.site ?? 'Unknown Site'}
+            </span>
+            <span style={META_LABEL}>·</span>
+            <span style={META_LABEL}>{turtle.species ?? 'Unidentified species'}</span>
+          </div>
+          <h1
+            className="mt-1"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              fontSize: '2rem',
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            {turtle.external_id}
+            {turtle.name && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 400,
+                  letterSpacing: '0.02em',
+                  fontSize: '1.5rem',
+                  color: 'var(--color-text-secondary)',
+                  marginLeft: '0.75rem',
+                }}
+              >
+                {turtle.name}
+              </span>
+            )}
+          </h1>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
           style={{
             fontFamily: 'var(--font-body)',
             fontSize: '0.65rem',
-            letterSpacing: '0.28em',
+            fontWeight: 700,
+            letterSpacing: '0.22em',
             textTransform: 'uppercase',
-            color: siteColor,
-            fontWeight: 600,
+            color: hovered ? 'var(--color-btn-primary-text)' : 'var(--color-text-secondary)',
+            backgroundColor: hovered ? 'var(--color-btn-primary-bg)' : 'transparent',
+            border: '1px solid var(--color-border-action)',
+            padding: '0.55rem 0.875rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            flexShrink: 0,
           }}
         >
-          {turtle.site ?? 'Unknown Site'}
-        </span>
-        <span style={META_LABEL}>·</span>
-        <span style={META_LABEL}>{turtle.species ?? 'Unidentified species'}</span>
+          Edit
+        </button>
       </div>
-      <h1
-        className="mt-1"
-        style={{
-          fontFamily: 'var(--font-heading)',
-          fontWeight: 700,
-          letterSpacing: '0.05em',
-          fontSize: '2rem',
-          color: 'var(--color-text-primary)',
-        }}
-      >
-        {turtle.external_id}
-        {turtle.name && (
-          <span
-            style={{
-              fontFamily: 'var(--font-heading)',
-              fontWeight: 400,
-              letterSpacing: '0.02em',
-              fontSize: '1.5rem',
-              color: 'var(--color-text-secondary)',
-              marginLeft: '0.75rem',
-            }}
-          >
-            {turtle.name}
-          </span>
-        )}
-      </h1>
       <div className="mt-4 grid grid-cols-3 gap-px" style={{ backgroundColor: 'var(--color-border)' }}>
         <HeaderStat label="Captures" value={turtle.capture_count} />
         <HeaderStat label="Encounters" value={turtle.encounter_count} accent={siteColor} />
@@ -1024,4 +1069,345 @@ function Section({ label, children }: { label: string; children: React.ReactNode
       {children}
     </div>
   );
+}
+
+// ── Edit modal ──────────────────────────────────────────────────────────
+
+function EditTurtleModal({
+  turtle, onClose,
+}: { turtle: TurtleResponse; onClose: () => void }) {
+  const queryClient = useQueryClient();
+
+  const [form, setForm] = useState<TurtleUpdate>({
+    external_id: turtle.external_id ?? '',
+    name: turtle.name ?? '',
+    nickname: turtle.nickname ?? '',
+    site: turtle.site ?? '',
+    species: turtle.species ?? '',
+    gender: turtle.gender ?? '',
+    pattern: turtle.pattern ?? '',
+    carapace_flare: turtle.carapace_flare ?? '',
+    health_status: turtle.health_status ?? '',
+    residence_status: turtle.residence_status ?? '',
+    identifying_marks: turtle.identifying_marks ?? '',
+    eye_color: turtle.eye_color ?? '',
+    plastron_depression: turtle.plastron_depression ?? '',
+    plots_text: turtle.plots_text ?? '',
+    notes: turtle.notes ?? '',
+  });
+
+  function set<K extends keyof TurtleUpdate>(key: K, val: TurtleUpdate[K]) {
+    setForm((f) => ({ ...f, [key]: val }));
+  }
+
+  // Live availability check on the proposed external_id
+  const proposedId = (form.external_id ?? '').trim();
+  const idChanged = proposedId !== (turtle.external_id ?? '').trim();
+  const idCheck = useQuery({
+    queryKey: ['check-turtle-id', proposedId, turtle.id],
+    queryFn: () => checkTurtleId(proposedId, turtle.id),
+    enabled: idChanged && proposedId.length > 0,
+    staleTime: 5_000,
+  });
+  const idAvailable = !idChanged || (idCheck.data?.available ?? true);
+  const idChecking = idCheck.isFetching && idChanged;
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      // Send only fields that changed to keep the payload small + avoid
+      // accidentally clearing un-touched columns.
+      const payload: TurtleUpdate = {};
+      const orig: Record<string, unknown> = turtle as unknown as Record<string, unknown>;
+      for (const [key, value] of Object.entries(form)) {
+        const cur = (value === '' ? null : value);
+        const before = orig[key] ?? null;
+        if (cur !== before) {
+          (payload as Record<string, unknown>)[key] = cur;
+        }
+      }
+      return updateTurtle(turtle.id, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['turtle', turtle.id] });
+      queryClient.invalidateQueries({ queryKey: ['turtles'] });
+      onClose();
+    },
+  });
+
+  // Close on ESC
+  useEffect(() => {
+    function k(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
+
+  const canSave = !mutation.isPending
+    && proposedId.length > 0
+    && (idAvailable || !idChanged)
+    && !idChecking;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+        padding: '3rem 1.5rem',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: 'var(--color-bg)',
+          border: '1px solid var(--color-border)',
+          padding: '2rem 2.25rem',
+          width: '100%',
+          maxWidth: '40rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+        }}
+      >
+        <div className="flex items-baseline justify-between">
+          <div className="flex flex-col gap-1">
+            <span style={SECTION_LABEL}>Editing turtle</span>
+            <h2
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                fontSize: '1.5rem',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {turtle.external_id}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.65rem',
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-muted)',
+              background: 'transparent',
+              border: '1px solid var(--color-border)',
+              padding: '0.45rem 0.75rem',
+              cursor: 'pointer',
+            }}
+          >
+            Close (Esc)
+          </button>
+        </div>
+
+        <EditField label="Turtle ID">
+          <input
+            type="text"
+            value={form.external_id ?? ''}
+            onChange={(e) => set('external_id', e.target.value)}
+            style={editInputStyle(!idAvailable)}
+          />
+          {idChanged && proposedId && !idAvailable && (
+            <span style={{ ...editHelpStyle, color: 'var(--color-text-error, #cc0000)' }}>
+              Already in use.
+            </span>
+          )}
+          {idChanged && proposedId && idChecking && (
+            <span style={editHelpStyle}>Checking…</span>
+          )}
+          {idChanged && proposedId && idAvailable && !idChecking && (
+            <span style={editHelpStyle}>Available.</span>
+          )}
+        </EditField>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Nickname">
+            <input
+              type="text"
+              value={form.nickname ?? ''}
+              onChange={(e) => { set('nickname', e.target.value); set('name', e.target.value); }}
+              style={editInputStyle(false)}
+            />
+          </EditField>
+          <EditField label="Site">
+            <select
+              value={form.site ?? ''}
+              onChange={(e) => set('site', e.target.value)}
+              style={editInputStyle(false)}
+            >
+              <option value="">—</option>
+              <option value="patuxent">Patuxent</option>
+              <option value="wallkill">Wallkill</option>
+            </select>
+          </EditField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Species">
+            <input type="text" value={form.species ?? ''} onChange={(e) => set('species', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+          <EditField label="Gender">
+            <select value={form.gender ?? ''} onChange={(e) => set('gender', e.target.value)} style={editInputStyle(false)}>
+              <option value="">—</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Juvenile">Juvenile</option>
+              <option value="Unknown">Unknown</option>
+            </select>
+          </EditField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Pattern">
+            <input type="text" value={form.pattern ?? ''} onChange={(e) => set('pattern', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+          <EditField label="Identifying Marks">
+            <input type="text" value={form.identifying_marks ?? ''} onChange={(e) => set('identifying_marks', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Eye Color">
+            <input type="text" value={form.eye_color ?? ''} onChange={(e) => set('eye_color', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+          <EditField label="Carapace Flare">
+            <input type="text" value={form.carapace_flare ?? ''} onChange={(e) => set('carapace_flare', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Plastron Depression">
+            <input type="text" value={form.plastron_depression ?? ''} onChange={(e) => set('plastron_depression', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+          <EditField label="Plot(s)">
+            <input type="text" value={form.plots_text ?? ''} onChange={(e) => set('plots_text', e.target.value)} style={editInputStyle(false)} />
+          </EditField>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <EditField label="Health Status">
+            <select value={form.health_status ?? ''} onChange={(e) => set('health_status', e.target.value)} style={editInputStyle(false)}>
+              <option value="">—</option>
+              <option value="Healthy">Healthy</option>
+              <option value="Injured">Injured</option>
+              <option value="Sick">Sick</option>
+              <option value="Deceased">Deceased</option>
+              <option value="Unknown">Unknown</option>
+            </select>
+          </EditField>
+          <EditField label="Residence Status">
+            <select value={form.residence_status ?? ''} onChange={(e) => set('residence_status', e.target.value)} style={editInputStyle(false)}>
+              <option value="">—</option>
+              <option value="Resident - Frequent">Resident — Frequent</option>
+              <option value="Resident - Occasional">Resident — Occasional</option>
+              <option value="Migrant">Migrant</option>
+            </select>
+          </EditField>
+        </div>
+
+        <EditField label="Notes">
+          <textarea
+            value={form.notes ?? ''}
+            onChange={(e) => set('notes', e.target.value)}
+            rows={4}
+            style={{ ...editInputStyle(false), resize: 'vertical', minHeight: '5rem' }}
+          />
+        </EditField>
+
+        {mutation.isError && (
+          <div style={{
+            backgroundColor: 'var(--color-bg-card)',
+            border: '1px solid var(--color-text-error, #cc0000)',
+            padding: '0.75rem 1rem',
+          }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-error, #cc0000)', margin: 0 }}>
+              {mutation.error instanceof Error ? mutation.error.message : 'Save failed.'}
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-secondary)',
+              backgroundColor: 'transparent',
+              border: '1px solid var(--color-border-action)',
+              padding: '0.65rem 1.25rem',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!canSave}
+            onClick={() => mutation.mutate()}
+            style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: 'var(--color-btn-primary-text)',
+              backgroundColor: 'var(--color-btn-primary-bg)',
+              border: 'none',
+              padding: '0.65rem 1.25rem',
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              opacity: canSave ? 1 : 0.5,
+            }}
+          >
+            {mutation.isPending ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span style={META_LABEL}>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+const editHelpStyle: CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  color: 'var(--color-text-muted)',
+  fontSize: '0.7rem',
+  letterSpacing: '0.05em',
+};
+
+function editInputStyle(error: boolean): CSSProperties {
+  return {
+    width: '100%',
+    padding: '0.55rem 0.75rem',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.875rem',
+    color: 'var(--color-text-primary)',
+    backgroundColor: 'var(--color-bg)',
+    border: `1px solid ${error ? 'var(--color-text-error, #cc0000)' : 'var(--color-border-input)'}`,
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
 }

@@ -29,6 +29,31 @@ def get_services():
     return SiftService(), CropperService(), ImageService()
 
 
+@router.get("/turtles/next-id")
+async def suggest_next_turtle_id(db: Session = Depends(get_db)):
+    """Suggest the next unused TXXX-style turtle id (for prefilling forms)."""
+    from app.api.submissions import _suggest_next_turtle_id
+    return {"external_id": _suggest_next_turtle_id(db)}
+
+
+@router.get("/turtles/check-id")
+async def check_turtle_id(
+    external_id: str = Query(..., min_length=1),
+    exclude_turtle_id: Optional[int] = Query(None, description="Ignore this turtle when checking (for edits)"),
+    db: Session = Depends(get_db),
+):
+    """Check whether a proposed external_id is available."""
+    q = db.query(Turtle).filter(Turtle.external_id == external_id.strip())
+    if exclude_turtle_id is not None:
+        q = q.filter(Turtle.id != exclude_turtle_id)
+    existing = q.first()
+    return {
+        "external_id": external_id.strip(),
+        "available": existing is None,
+        "claimed_by_turtle_id": existing.id if existing else None,
+    }
+
+
 @router.get("/captures/locations")
 async def list_capture_locations(
     turtle_id: Optional[int] = Query(None, description="Restrict to one turtle"),
@@ -227,27 +252,41 @@ async def update_turtle(
     data: TurtleUpdate,
     db: Session = Depends(get_db),
 ):
-    """Update a turtle's name, notes, or external_id."""
+    """Update any subset of a turtle's editable fields.
+
+    All fields on the update payload are optional — only provided fields are
+    written. external_id is uniqueness-checked against the rest of the table.
+    """
     turtle = db.query(Turtle).filter(Turtle.id == turtle_id).first()
     if not turtle:
         raise HTTPException(status_code=404, detail="Turtle not found")
 
-    if data.name is not None:
-        turtle.name = data.name
-    if data.notes is not None:
-        turtle.notes = data.notes
     if data.external_id is not None:
-        # Check for duplicate
-        existing = db.query(Turtle).filter(
-            Turtle.external_id == data.external_id,
-            Turtle.id != turtle_id,
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Turtle with external_id '{data.external_id}' already exists",
-            )
-        turtle.external_id = data.external_id
+        new_id = data.external_id.strip()
+        if not new_id:
+            raise HTTPException(status_code=400, detail="Turtle ID cannot be empty")
+        if new_id != turtle.external_id:
+            clash = db.query(Turtle).filter(
+                Turtle.external_id == new_id,
+                Turtle.id != turtle_id,
+            ).first()
+            if clash:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Turtle ID '{new_id}' is already in use",
+                )
+            turtle.external_id = new_id
+
+    # Apply remaining editable fields verbatim
+    for field in (
+        "name", "nickname", "notes", "site", "species", "gender", "pattern",
+        "carapace_flare", "health_status", "residence_status",
+        "identifying_marks", "eye_color", "plastron_depression", "plots_text",
+        "first_seen",
+    ):
+        value = getattr(data, field)
+        if value is not None:
+            setattr(turtle, field, value)
 
     db.commit()
     db.refresh(turtle)
