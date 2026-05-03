@@ -118,6 +118,19 @@ export async function fetchEncounterDetail(encounterId: number): Promise<Encount
   return apiFetch<EncounterDetailResponse>(`/api/encounters/${encounterId}`);
 }
 
+export interface EncounterListItem extends EncounterResponse {
+  turtle_external_id: string;
+  turtle_name: string | null;
+  site: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export async function fetchAllEncounters(turtleId?: number): Promise<EncounterListItem[]> {
+  const qs = turtleId !== undefined ? `?turtle_id=${turtleId}` : '';
+  return apiFetch<EncounterListItem[]>(`/api/encounters${qs}`);
+}
+
 export async function suggestNextTurtleId(): Promise<{ external_id: string }> {
   return apiFetch<{ external_id: string }>('/api/turtles/next-id');
 }

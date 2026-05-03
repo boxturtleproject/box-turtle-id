@@ -19,6 +19,7 @@ const AdminTurtleProfile = lazy(() => import('./admin/TurtleProfile'));
 const AdminSettings = lazy(() => import('./admin/Settings'));
 const AdminSync = lazy(() => import('./admin/Sync'));
 const AdminMap = lazy(() => import('./admin/Map'));
+const AdminEncounters = lazy(() => import('./admin/Encounters'));
 
 function AdminFallback() {
   return <div className="p-8 text-gray-500">Loading...</div>;
@@ -66,6 +67,10 @@ export default function App() {
       <Route
         path="/admin/map"
         element={<Suspense fallback={<AdminFallback />}><AdminMap /></Suspense>}
+      />
+      <Route
+        path="/admin/encounters"
+        element={<Suspense fallback={<AdminFallback />}><AdminEncounters /></Suspense>}
       />
     </Routes>
   );

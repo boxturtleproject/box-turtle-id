@@ -29,6 +29,70 @@ def get_services():
     return SiftService(), CropperService(), ImageService()
 
 
+@router.get("/encounters")
+async def list_all_encounters(
+    turtle_id: Optional[int] = Query(None, description="Restrict to one turtle"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+):
+    """List encounters newest-first, with turtle context + capture count.
+
+    Returns enough information for an admin list view (date, plot, badges,
+    notes, observer, capture count, plus the turtle's external_id and name)
+    in one query — uses a left join + a correlated count subquery so we
+    avoid the N+1 pattern.
+    """
+    from sqlalchemy import select
+
+    capture_count_subq = (
+        select(func.count(Capture.id))
+        .where(Capture.encounter_id == Encounter.id)
+        .correlate(Encounter)
+        .scalar_subquery()
+    )
+
+    q = (
+        db.query(
+            Encounter,
+            Turtle.external_id,
+            Turtle.name,
+            Turtle.site,
+            capture_count_subq.label("capture_count"),
+        )
+        .join(Turtle, Encounter.turtle_id == Turtle.id)
+        .order_by(Encounter.encounter_date.desc().nullslast(), Encounter.id.desc())
+    )
+    if turtle_id is not None:
+        q = q.filter(Encounter.turtle_id == turtle_id)
+
+    rows = q.offset(skip).limit(limit).all()
+    out = []
+    for enc, ext_id, name, site, cap_count in rows:
+        out.append({
+            "id": enc.id,
+            "turtle_id": enc.turtle_id,
+            "turtle_external_id": ext_id,
+            "turtle_name": name,
+            "site": site,
+            "external_id": enc.external_id,
+            "encounter_date": enc.encounter_date.isoformat() if enc.encounter_date else None,
+            "plot_name": enc.plot_name,
+            "survey_id": enc.survey_id,
+            "identified": enc.identified,
+            "health_status": enc.health_status,
+            "behavior": enc.behavior,
+            "setting": enc.setting,
+            "conditions": enc.conditions,
+            "notes": enc.notes,
+            "observer_nickname": enc.observer_nickname,
+            "latitude": enc.latitude,
+            "longitude": enc.longitude,
+            "capture_count": cap_count or 0,
+        })
+    return out
+
+
 @router.get("/turtles/next-id")
 async def suggest_next_turtle_id(db: Session = Depends(get_db)):
     """Suggest the next unused TXXX-style turtle id (for prefilling forms)."""
