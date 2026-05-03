@@ -320,7 +320,7 @@ function EncountersMap({
         ref={containerRef}
         style={{
           width: '100%',
-          height: '480px',
+          height: '620px',
           border: '1px solid var(--color-border)',
           backgroundColor: 'var(--color-bg-card)',
         }}
