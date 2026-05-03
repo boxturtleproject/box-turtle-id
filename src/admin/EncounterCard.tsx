@@ -57,11 +57,10 @@ export function EncounterCard({
     <li
       id={`encounter-card-${encounter.id}`}
       style={{
-        backgroundColor: selected ? '#fffbe6' : 'var(--color-bg)',
-        border: `1px solid ${selected ? '#d4a017' : 'var(--color-border)'}`,
+        backgroundColor: 'var(--color-bg)',
+        border: '1px solid var(--color-border)',
         borderLeft: `3px solid ${siteColor}`,
         scrollMarginTop: '1rem',
-        transition: 'background-color 0.15s, border-color 0.15s',
       }}
     >
       <button
