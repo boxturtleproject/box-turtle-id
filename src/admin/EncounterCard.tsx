@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchEncounterDetail, imageUrl } from '../shared/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteEncounter, fetchEncounterDetail, imageUrl } from '../shared/lib/api';
 import type { EncounterResponse } from '../shared/types';
 
 const META_LABEL: CSSProperties = {
@@ -51,6 +51,19 @@ export function EncounterCard({
     queryKey: ['encounter', encounter.id],
     queryFn: () => fetchEncounterDetail(encounter.id),
     enabled: expanded && hasPhotos,
+  });
+
+  const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteEncounter(encounter.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-encounters'] });
+      queryClient.invalidateQueries({ queryKey: ['encounters', encounter.turtle_id] });
+      queryClient.invalidateQueries({ queryKey: ['turtle', encounter.turtle_id] });
+      queryClient.invalidateQueries({ queryKey: ['turtles'] });
+      queryClient.invalidateQueries({ queryKey: ['capture-locations'] });
+    },
   });
 
   return (
@@ -228,6 +241,83 @@ export function EncounterCard({
               {encounter.survey_id && <span>Survey: {encounter.survey_id}</span>}
             </div>
           )}
+          {/* Delete affordance — confirm in-place to avoid an extra modal */}
+          <div
+            className="flex items-center justify-between gap-3 pt-2 mt-1"
+            style={{ borderTop: '1px solid var(--color-border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {!confirmDelete ? (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-error, #cc0000)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                Delete encounter
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span style={{ ...META_LABEL, color: 'var(--color-text-primary)' }}>
+                  Delete this encounter and {encounter.capture_count > 0 ? `${encounter.capture_count} photo${encounter.capture_count !== 1 ? 's' : ''}` : 'no photos'}?
+                </span>
+                <button
+                  type="button"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate()}
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: '#fff',
+                    backgroundColor: 'var(--color-text-error, #cc0000)',
+                    border: 'none',
+                    padding: '0.5rem 0.875rem',
+                    cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
+                    opacity: deleteMutation.isPending ? 0.6 : 1,
+                  }}
+                >
+                  {deleteMutation.isPending ? 'Deleting…' : 'Yes, delete'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={deleteMutation.isPending}
+                  style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.65rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: 'var(--color-text-secondary)',
+                    background: 'transparent',
+                    border: '1px solid var(--color-border)',
+                    padding: '0.5rem 0.875rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {deleteMutation.isError && (
+              <span style={{ color: 'var(--color-text-error, #cc0000)', fontSize: '0.75rem' }}>
+                {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Delete failed.'}
+              </span>
+            )}
+          </div>
         </div>
       )}
     </li>

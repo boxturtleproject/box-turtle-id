@@ -25,6 +25,10 @@ class StorageBackend(Protocol):
         """Persist body. Returns (stored_path_or_key, optional_public_url)."""
         ...
 
+    def delete(self, key: str) -> bool:
+        """Delete object at key. Returns True if removed (or already gone)."""
+        ...
+
 
 class LocalStorage:
     name = "local"
@@ -39,6 +43,16 @@ class LocalStorage:
         # Return a relative URL that resolves against the API host. The static
         # mount in main.py serves data_dir at /api/static/...
         return key, f"/api/static/{key}"
+
+    def delete(self, key: str) -> bool:
+        path = self.root / key
+        try:
+            if path.exists():
+                path.unlink()
+            return True
+        except OSError as e:
+            logger.warning(f"local delete failed for {key}: {e}")
+            return False
 
 
 class S3Storage:
@@ -70,6 +84,14 @@ class S3Storage:
             Params={"Bucket": self.bucket, "Key": key},
             ExpiresIn=expires_in,
         )
+
+    def delete(self, key: str) -> bool:
+        try:
+            self._client.delete_object(Bucket=self.bucket, Key=key)
+            return True
+        except Exception as e:
+            logger.warning(f"S3 delete failed for {key}: {e}")
+            return False
 
 
 _singleton: Optional[StorageBackend] = None

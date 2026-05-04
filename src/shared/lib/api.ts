@@ -118,6 +118,14 @@ export async function fetchEncounterDetail(encounterId: number): Promise<Encount
   return apiFetch<EncounterDetailResponse>(`/api/encounters/${encounterId}`);
 }
 
+export async function deleteEncounter(encounterId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/encounters/${encounterId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+}
+
 export interface EncounterListItem extends EncounterResponse {
   turtle_external_id: string;
   turtle_name: string | null;

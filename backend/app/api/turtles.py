@@ -1,8 +1,11 @@
 # ABOUTME: API endpoints for turtle and capture CRUD operations.
 # ABOUTME: Manages the turtle database and their photo captures.
 
+import logging
 from datetime import date
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import and_, case, func, literal
@@ -603,6 +606,51 @@ async def list_turtle_encounters(turtle_id: int, db: Session = Depends(get_db)):
         results.append(response)
 
     return results
+
+
+@router.delete("/encounters/{encounter_id}", status_code=204)
+async def delete_encounter(encounter_id: int, db: Session = Depends(get_db)):
+    """Delete an encounter and all of its captures.
+
+    The captures are removed entirely (not just unlinked) so they no longer
+    appear in SIFT identify results or on maps. Local files (the original
+    image + thumb + display) are best-effort deleted; bucket-stored
+    derivatives are removed via the storage backend.
+    """
+    from pathlib import Path
+    from app.services.storage import get_storage
+
+    encounter = db.query(Encounter).filter(Encounter.id == encounter_id).first()
+    if not encounter:
+        raise HTTPException(status_code=404, detail="Encounter not found")
+
+    storage = get_storage()
+    captures = db.query(Capture).filter(Capture.encounter_id == encounter_id).all()
+    deleted_files = 0
+    deleted_keys = 0
+    for cap in captures:
+        # Local original
+        if cap.image_path:
+            try:
+                p = Path(cap.image_path)
+                if p.exists():
+                    p.unlink()
+                    deleted_files += 1
+            except OSError:
+                pass
+        # Derivatives (key in bucket / relative path locally)
+        for key in (cap.thumbnail_path, cap.display_path):
+            if key:
+                if storage.delete(key):
+                    deleted_keys += 1
+        db.delete(cap)
+
+    db.delete(encounter)
+    db.commit()
+    logger.info(
+        f"deleted encounter {encounter_id} ({len(captures)} captures, "
+        f"{deleted_files} local files, {deleted_keys} storage keys)"
+    )
 
 
 @router.get("/encounters/{encounter_id}", response_model=EncounterDetailResponse)
