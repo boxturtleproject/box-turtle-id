@@ -377,17 +377,44 @@ async def update_turtle(
 
 @router.delete("/turtles/{turtle_id}", status_code=204)
 async def delete_turtle(turtle_id: int, db: Session = Depends(get_db)):
-    """Delete a turtle. Captures are unlinked but not deleted."""
+    """Delete a turtle plus all its encounters and captures.
+
+    Wipes every encounter, every capture (linked or orphan), and the
+    underlying image files / bucket-stored derivatives, so nothing about
+    the turtle remains in identify results or on the maps.
+    """
+    from app.services.storage import get_storage
+
     turtle = db.query(Turtle).filter(Turtle.id == turtle_id).first()
     if not turtle:
         raise HTTPException(status_code=404, detail="Turtle not found")
 
-    # Unlink captures (SET NULL due to foreign key)
-    db.query(Capture).filter(Capture.turtle_id == turtle_id).update(
-        {Capture.turtle_id: None}
-    )
+    storage = get_storage()
+    files = keys = 0
+
+    # Encounter-linked captures
+    encounters = db.query(Encounter).filter(Encounter.turtle_id == turtle_id).all()
+    for enc in encounters:
+        for cap in db.query(Capture).filter(Capture.encounter_id == enc.id).all():
+            f, k = _delete_capture_assets(cap, storage)
+            files += f; keys += k
+            db.delete(cap)
+        db.delete(enc)
+    # Orphan captures (turtle profile photos not tied to a specific encounter)
+    for cap in db.query(Capture).filter(
+        Capture.turtle_id == turtle_id,
+        Capture.encounter_id.is_(None),
+    ).all():
+        f, k = _delete_capture_assets(cap, storage)
+        files += f; keys += k
+        db.delete(cap)
+
     db.delete(turtle)
     db.commit()
+    logger.info(
+        f"deleted turtle {turtle_id} (cascade: {len(encounters)} encounters, "
+        f"{files} local files, {keys} storage keys)"
+    )
 
 
 @router.patch("/turtles/{turtle_id}/cover/{capture_id}", response_model=TurtleResponse)
@@ -608,16 +635,44 @@ async def list_turtle_encounters(turtle_id: int, db: Session = Depends(get_db)):
     return results
 
 
-@router.delete("/encounters/{encounter_id}", status_code=204)
-async def delete_encounter(encounter_id: int, db: Session = Depends(get_db)):
-    """Delete an encounter and all of its captures.
+def _delete_capture_assets(cap: Capture, storage) -> tuple[int, int]:
+    """Best-effort cleanup of a capture's on-disk + bucket artefacts.
 
-    The captures are removed entirely (not just unlinked) so they no longer
-    appear in SIFT identify results or on maps. Local files (the original
-    image + thumb + display) are best-effort deleted; bucket-stored
-    derivatives are removed via the storage backend.
+    Returns (files_unlinked, storage_keys_deleted).
     """
     from pathlib import Path
+    files = keys = 0
+    if cap.image_path:
+        try:
+            p = Path(cap.image_path)
+            if p.exists():
+                p.unlink()
+                files += 1
+        except OSError:
+            pass
+    for key in (cap.thumbnail_path, cap.display_path):
+        if key and storage.delete(key):
+            keys += 1
+    return files, keys
+
+
+@router.delete("/encounters/{encounter_id}", status_code=204)
+async def delete_encounter(
+    encounter_id: int,
+    db: Session = Depends(get_db),
+):
+    """Delete an encounter and all of its captures.
+
+    Captures are removed entirely (not just unlinked) so they no longer
+    surface in SIFT identify results or on maps. Local files (originals +
+    thumb/display derivatives) are best-effort deleted; bucket-stored keys
+    are removed via the storage backend.
+
+    Auto-cleanup: if removing this encounter leaves the turtle with zero
+    remaining encounters AND zero remaining captures, the turtle row is
+    deleted too. Covers the common case of undoing a form-created turtle
+    by deleting its single originating encounter.
+    """
     from app.services.storage import get_storage
 
     encounter = db.query(Encounter).filter(Encounter.id == encounter_id).first()
@@ -625,31 +680,37 @@ async def delete_encounter(encounter_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Encounter not found")
 
     storage = get_storage()
-    captures = db.query(Capture).filter(Capture.encounter_id == encounter_id).all()
-    deleted_files = 0
-    deleted_keys = 0
-    for cap in captures:
-        # Local original
-        if cap.image_path:
-            try:
-                p = Path(cap.image_path)
-                if p.exists():
-                    p.unlink()
-                    deleted_files += 1
-            except OSError:
-                pass
-        # Derivatives (key in bucket / relative path locally)
-        for key in (cap.thumbnail_path, cap.display_path):
-            if key:
-                if storage.delete(key):
-                    deleted_keys += 1
-        db.delete(cap)
+    turtle_id = encounter.turtle_id
 
+    captures = db.query(Capture).filter(Capture.encounter_id == encounter_id).all()
+    files = keys = 0
+    for cap in captures:
+        f, k = _delete_capture_assets(cap, storage)
+        files += f
+        keys += k
+        db.delete(cap)
     db.delete(encounter)
+    db.flush()  # make the deletes visible to the next queries
+
+    turtle_deleted = False
+    if turtle_id is not None:
+        remaining_encs = db.query(func.count(Encounter.id)).filter(
+            Encounter.turtle_id == turtle_id
+        ).scalar() or 0
+        remaining_caps = db.query(func.count(Capture.id)).filter(
+            Capture.turtle_id == turtle_id
+        ).scalar() or 0
+        if remaining_encs == 0 and remaining_caps == 0:
+            turtle = db.query(Turtle).filter(Turtle.id == turtle_id).first()
+            if turtle:
+                db.delete(turtle)
+                turtle_deleted = True
+
     db.commit()
     logger.info(
-        f"deleted encounter {encounter_id} ({len(captures)} captures, "
-        f"{deleted_files} local files, {deleted_keys} storage keys)"
+        f"deleted encounter {encounter_id}"
+        f"{' + turtle ' + str(turtle_id) if turtle_deleted else ''}"
+        f" ({files} local files, {keys} storage keys)"
     )
 
 

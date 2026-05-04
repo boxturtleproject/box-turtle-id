@@ -126,6 +126,14 @@ export async function deleteEncounter(encounterId: number): Promise<void> {
   }
 }
 
+export async function deleteTurtle(turtleId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/turtles/${turtleId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+}
+
 export interface EncounterListItem extends EncounterResponse {
   turtle_external_id: string;
   turtle_name: string | null;

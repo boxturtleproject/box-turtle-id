@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchTurtle,
@@ -7,6 +7,7 @@ import {
   imageUrl,
   updateTurtle,
   checkTurtleId,
+  deleteTurtle,
   type TurtleUpdate,
 } from '../shared/lib/api';
 import type { CaptureResponse, EncounterResponse, TurtleResponse } from '../shared/types';
@@ -862,6 +863,18 @@ function EditTurtleModal({
   turtle, onClose,
 }: { turtle: TurtleResponse; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [confirmDeleteTurtle, setConfirmDeleteTurtle] = useState(false);
+
+  const deleteTurtleMutation = useMutation({
+    mutationFn: () => deleteTurtle(turtle.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['turtles'] });
+      queryClient.invalidateQueries({ queryKey: ['all-encounters'] });
+      queryClient.invalidateQueries({ queryKey: ['capture-locations'] });
+      navigate('/admin');
+    },
+  });
 
   const [form, setForm] = useState<TurtleUpdate>({
     external_id: turtle.external_id ?? '',
@@ -1121,6 +1134,90 @@ function EditTurtleModal({
             </p>
           </div>
         )}
+
+        {/* Danger zone — delete the turtle entirely */}
+        <div
+          className="flex items-center justify-between gap-3 pt-3 mt-2"
+          style={{ borderTop: '1px solid var(--color-border)' }}
+        >
+          {!confirmDeleteTurtle ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteTurtle(true)}
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: '0.7rem',
+                color: 'var(--color-text-muted)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+                textUnderlineOffset: '2px',
+              }}
+            >
+              delete this turtle
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                Permanently delete {turtle.external_id}
+                {(turtle.encounter_count > 0 || turtle.capture_count > 0) && (
+                  <> with all{' '}
+                    {turtle.encounter_count > 0 && (
+                      <>{turtle.encounter_count} encounter{turtle.encounter_count !== 1 ? 's' : ''}</>
+                    )}
+                    {turtle.encounter_count > 0 && turtle.capture_count > 0 && ' and '}
+                    {turtle.capture_count > 0 && (
+                      <>{turtle.capture_count} photo{turtle.capture_count !== 1 ? 's' : ''}</>
+                    )}
+                  </>
+                )}?
+              </span>
+              <button
+                type="button"
+                disabled={deleteTurtleMutation.isPending}
+                onClick={() => deleteTurtleMutation.mutate()}
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-error, #cc0000)',
+                  background: 'transparent',
+                  border: '1px solid var(--color-text-error, #cc0000)',
+                  padding: '0.35rem 0.75rem',
+                  cursor: deleteTurtleMutation.isPending ? 'not-allowed' : 'pointer',
+                  opacity: deleteTurtleMutation.isPending ? 0.6 : 1,
+                }}
+              >
+                {deleteTurtleMutation.isPending ? 'Deleting…' : 'Confirm delete'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteTurtle(false)}
+                disabled={deleteTurtleMutation.isPending}
+                style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '0.65rem',
+                  color: 'var(--color-text-muted)',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '0.35rem 0.5rem',
+                  cursor: 'pointer',
+                }}
+              >
+                cancel
+              </button>
+            </div>
+          )}
+          {deleteTurtleMutation.isError && (
+            <span style={{ color: 'var(--color-text-error, #cc0000)', fontSize: '0.75rem' }}>
+              {deleteTurtleMutation.error instanceof Error ? deleteTurtleMutation.error.message : 'Delete failed.'}
+            </span>
+          )}
+        </div>
 
         <div className="flex justify-end gap-3 pt-1">
           <button

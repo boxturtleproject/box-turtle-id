@@ -241,35 +241,35 @@ export function EncounterCard({
               {encounter.survey_id && <span>Survey: {encounter.survey_id}</span>}
             </div>
           )}
-          {/* Delete affordance — confirm in-place to avoid an extra modal */}
+          {/* Delete affordance — discrete: small text link, confirm inline */}
           <div
-            className="flex items-center justify-between gap-3 pt-2 mt-1"
-            style={{ borderTop: '1px solid var(--color-border)' }}
+            className="flex items-center justify-end gap-3 pt-1"
             onClick={(e) => e.stopPropagation()}
           >
             {!confirmDelete ? (
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
+                title="Delete this encounter"
                 style={{
                   fontFamily: 'var(--font-body)',
                   fontSize: '0.65rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: 'var(--color-text-error, #cc0000)',
+                  letterSpacing: '0.05em',
+                  color: 'var(--color-text-muted)',
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
                 }}
               >
-                Delete encounter
+                delete
               </button>
             ) : (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span style={{ ...META_LABEL, color: 'var(--color-text-primary)' }}>
-                  Delete this encounter and {encounter.capture_count > 0 ? `${encounter.capture_count} photo${encounter.capture_count !== 1 ? 's' : ''}` : 'no photos'}?
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>
+                  Delete encounter and {encounter.capture_count > 0 ? `${encounter.capture_count} photo${encounter.capture_count !== 1 ? 's' : ''}` : 'no photos'}?
                 </span>
                 <button
                   type="button"
@@ -279,17 +279,17 @@ export function EncounterCard({
                     fontFamily: 'var(--font-body)',
                     fontSize: '0.65rem',
                     fontWeight: 700,
-                    letterSpacing: '0.18em',
+                    letterSpacing: '0.1em',
                     textTransform: 'uppercase',
-                    color: '#fff',
-                    backgroundColor: 'var(--color-text-error, #cc0000)',
-                    border: 'none',
-                    padding: '0.5rem 0.875rem',
+                    color: 'var(--color-text-error, #cc0000)',
+                    background: 'transparent',
+                    border: '1px solid var(--color-text-error, #cc0000)',
+                    padding: '0.3rem 0.625rem',
                     cursor: deleteMutation.isPending ? 'not-allowed' : 'pointer',
                     opacity: deleteMutation.isPending ? 0.6 : 1,
                   }}
                 >
-                  {deleteMutation.isPending ? 'Deleting…' : 'Yes, delete'}
+                  {deleteMutation.isPending ? 'Deleting…' : 'Confirm'}
                 </button>
                 <button
                   type="button"
@@ -298,22 +298,19 @@ export function EncounterCard({
                   style={{
                     fontFamily: 'var(--font-body)',
                     fontSize: '0.65rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.18em',
-                    textTransform: 'uppercase',
-                    color: 'var(--color-text-secondary)',
+                    color: 'var(--color-text-muted)',
                     background: 'transparent',
-                    border: '1px solid var(--color-border)',
-                    padding: '0.5rem 0.875rem',
+                    border: 'none',
+                    padding: '0.3rem 0.4rem',
                     cursor: 'pointer',
                   }}
                 >
-                  Cancel
+                  cancel
                 </button>
               </div>
             )}
             {deleteMutation.isError && (
-              <span style={{ color: 'var(--color-text-error, #cc0000)', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--color-text-error, #cc0000)', fontSize: '0.7rem' }}>
                 {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Delete failed.'}
               </span>
             )}
