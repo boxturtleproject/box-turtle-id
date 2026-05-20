@@ -1,7 +1,10 @@
+import base64
+import re
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -86,6 +89,66 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Public API allowlist — anything else under /api/ requires admin auth.
+# Patterns match against request.url.path (no query string).
+_PUBLIC_API_ROUTES: list[tuple[str, re.Pattern[str]]] = [
+    ("GET", re.compile(r"^/api/health$")),
+    ("GET", re.compile(r"^/api/static/.+")),
+    ("POST", re.compile(r"^/api/submissions/identify$")),
+    ("POST", re.compile(r"^/api/submissions/[^/]+/confirm$")),
+    ("POST", re.compile(r"^/api/submissions/[^/]+/new-turtle$")),
+    ("GET", re.compile(r"^/api/turtles/next-id$")),
+    ("GET", re.compile(r"^/api/turtles/check-id$")),
+    ("GET", re.compile(r"^/api/turtles/[^/]+$")),
+    ("GET", re.compile(r"^/api/turtles/[^/]+/encounters$")),
+]
+
+# FastAPI's auto-generated docs leak the full API schema, so gate them too.
+_GATED_DOCS = {"/docs", "/redoc", "/openapi.json"}
+
+
+def _needs_admin_auth(method: str, path: str) -> bool:
+    # Let CORS preflights through; CORSMiddleware handles them.
+    if method == "OPTIONS":
+        return False
+    if path.startswith("/admin"):
+        return True
+    if path in _GATED_DOCS:
+        return True
+    if path.startswith("/api/"):
+        for allowed_method, pattern in _PUBLIC_API_ROUTES:
+            if method == allowed_method and pattern.match(path):
+                return False
+        return True
+    return False
+
+
+@app.middleware("http")
+async def admin_basic_auth(request: Request, call_next):
+    if not _needs_admin_auth(request.method, request.url.path):
+        return await call_next(request)
+
+    # Unset password disables the gate (dev convenience).
+    if not settings.admin_password:
+        return await call_next(request)
+
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth[6:]).decode("utf-8")
+            user, _, password = decoded.partition(":")
+            if secrets.compare_digest(user, settings.admin_user) and \
+                    secrets.compare_digest(password, settings.admin_password):
+                return await call_next(request)
+        except (ValueError, UnicodeDecodeError):
+            pass
+
+    return Response(
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="BoxTurtle Admin"'},
+    )
 
 # Bucket-backed derivative redirect: when the storage backend is S3, serve
 # /api/static/captures/derivatives/* by 302-ing to a signed bucket URL. Local

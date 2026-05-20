@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     # App
     environment: str = "development"
 
+    # Admin HTTP Basic Auth. If admin_password is unset, the gate is disabled
+    # (useful for local dev). Set both in production to require credentials on
+    # /admin* pages and /api/admin/* endpoints.
+    admin_user: str = "admin"
+    admin_password: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
