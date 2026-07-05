@@ -35,6 +35,8 @@ def get_services():
 @router.get("/encounters")
 async def list_all_encounters(
     turtle_id: Optional[int] = Query(None, description="Restrict to one turtle"),
+    site: Optional[str] = Query(None, description="Restrict to one site (turtle.site)"),
+    year: Optional[int] = Query(None, description="Restrict to encounters in this year"),
     skip: int = Query(0, ge=0),
     limit: int = Query(25, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -45,6 +47,10 @@ async def list_all_encounters(
     for the admin list view (date, plot, badges, capture count) plus the
     turtle's external_id/name/site so the row can render context without a
     second fetch. Uses a single join + correlated count subquery; no N+1.
+
+    Filterable by turtle, site (via the turtle's site), and year (via
+    encounter_date). site/year require the Turtle/Encounter joins, so both the
+    count and the page query below apply them consistently.
     """
     from sqlalchemy import select
 
@@ -55,12 +61,27 @@ async def list_all_encounters(
         .scalar_subquery()
     )
 
-    base_filter = db.query(Encounter)
-    if turtle_id is not None:
-        base_filter = base_filter.filter(Encounter.turtle_id == turtle_id)
-    total = base_filter.count()
+    def apply_filters(q):
+        if turtle_id is not None:
+            q = q.filter(Encounter.turtle_id == turtle_id)
+        if site is not None:
+            q = q.filter(Turtle.site == site)
+        if year is not None:
+            # Half-open date range instead of EXTRACT(year …): portable to
+            # SQLite (no EXTRACT) and able to use an index on encounter_date.
+            # NULL encounter_date rows are excluded, as they have no year.
+            q = q.filter(
+                Encounter.encounter_date >= date(year, 1, 1),
+                Encounter.encounter_date < date(year + 1, 1, 1),
+            )
+        return q
 
-    q = (
+    # Count needs the Turtle join too so a site filter can reach turtle.site.
+    total = apply_filters(
+        db.query(func.count(Encounter.id)).join(Turtle, Encounter.turtle_id == Turtle.id)
+    ).scalar()
+
+    q = apply_filters(
         db.query(
             Encounter,
             Turtle.external_id,
@@ -71,8 +92,6 @@ async def list_all_encounters(
         .join(Turtle, Encounter.turtle_id == Turtle.id)
         .order_by(Encounter.encounter_date.desc().nullslast(), Encounter.id.desc())
     )
-    if turtle_id is not None:
-        q = q.filter(Encounter.turtle_id == turtle_id)
 
     rows = q.offset(skip).limit(limit).all()
     items = []
@@ -99,6 +118,40 @@ async def list_all_encounters(
             "capture_count": cap_count or 0,
         })
     return {"items": items, "total": total, "skip": skip, "limit": limit}
+
+
+@router.get("/encounters/facets")
+async def list_encounter_facets(db: Session = Depends(get_db)):
+    """One lightweight row per encounter for building the filter dropdowns.
+
+    Powers the cascading Site / Year / Turtle filters on the admin Encounters
+    page: the frontend derives each dropdown's options (and cascading) from
+    this full set. `year` is drawn from encounter_date (null when unset) so it
+    matches the server-side year filter on /api/encounters exactly.
+    """
+    rows = (
+        db.query(
+            Encounter.turtle_id,
+            Turtle.external_id,
+            Turtle.name,
+            Turtle.site,
+            Encounter.encounter_date,
+        )
+        .join(Turtle, Encounter.turtle_id == Turtle.id)
+        .all()
+    )
+    # Derive the year in Python from the date column — portable across SQLite
+    # (no EXTRACT) and Postgres, and matches the list's date-range year filter.
+    return [
+        {
+            "turtle_id": turtle_id,
+            "turtle_external_id": external_id,
+            "turtle_name": name,
+            "site": site,
+            "year": enc_date.year if enc_date is not None else None,
+        }
+        for turtle_id, external_id, name, site, enc_date in rows
+    ]
 
 
 @router.get("/turtles/next-id")

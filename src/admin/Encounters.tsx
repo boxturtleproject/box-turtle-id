@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import {
   fetchAllEncounters,
   fetchCaptureLocations,
+  fetchEncounterFacets,
   imageUrl,
   type CaptureLocation,
 } from '../shared/lib/api';
@@ -17,6 +18,14 @@ const SITE_COLOR: Record<string, string> = {
   patuxent: '#3a7d44',
   wallkill: '#c8622a',
 };
+
+const SITE_LABEL: Record<string, string> = {
+  patuxent: 'Patuxent',
+  wallkill: 'Wallkill',
+};
+
+const siteLabel = (s: string | null): string =>
+  s ? SITE_LABEL[s] ?? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown';
 
 const META_LABEL: CSSProperties = {
   fontFamily: 'var(--font-body)',
@@ -37,19 +46,23 @@ const SECTION_LABEL: CSSProperties = {
 const PAGE_SIZE = 25;
 
 export default function Encounters() {
+  const [siteFilter, setSiteFilter] = useState<string | 'all'>('all');
+  const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
   const [turtleFilter, setTurtleFilter] = useState<number | 'all'>('all');
   const [page, setPage] = useState(0);
   const [selectedEncounterId, setSelectedEncounterId] = useState<number | null>(null);
 
-  // Reset to page 0 whenever the filter changes
-  useEffect(() => { setPage(0); }, [turtleFilter]);
-  // Clear selection when the filter changes
-  useEffect(() => { setSelectedEncounterId(null); }, [turtleFilter, page]);
+  // Reset to page 0 whenever any filter changes
+  useEffect(() => { setPage(0); }, [siteFilter, yearFilter, turtleFilter]);
+  // Clear selection when the filter or page changes
+  useEffect(() => { setSelectedEncounterId(null); }, [siteFilter, yearFilter, turtleFilter, page]);
 
   const { data: paged, isLoading, error } = useQuery({
-    queryKey: ['all-encounters', turtleFilter, page],
+    queryKey: ['all-encounters', siteFilter, yearFilter, turtleFilter, page],
     queryFn: () => fetchAllEncounters({
       turtleId: turtleFilter === 'all' ? undefined : turtleFilter,
+      site: siteFilter === 'all' ? undefined : siteFilter,
+      year: yearFilter === 'all' ? undefined : yearFilter,
       skip: page * PAGE_SIZE,
       limit: PAGE_SIZE,
     }),
@@ -61,25 +74,112 @@ export default function Encounters() {
     queryFn: () => fetchCaptureLocations(),
   });
 
-  // Turtle dropdown comes from the location endpoint so it shows every turtle
-  // that exists in the system (one paginated encounter request would only see
-  // the current page's turtles).
-  const turtleOptions = useMemo(() => {
-    if (!locations) return [];
-    const byTurtle: Record<number, { id: number; label: string; site: string | null; count: number }> = {};
-    for (const loc of locations) {
-      const existing = byTurtle[loc.turtle_id];
+  // Facets drive the cascading Site/Year/Turtle dropdowns: one row per
+  // encounter, so we can compute each dropdown's options (and counts) from the
+  // other two active filters. Sourced from encounter_date, so year options
+  // line up with the server-side year filter on the list.
+  const { data: facets } = useQuery({
+    queryKey: ['encounter-facets'],
+    queryFn: () => fetchEncounterFacets(),
+  });
+
+  // A facet passes the active filters; pass 'all' for a dimension to ignore it
+  // (used to build that dimension's own option list without self-filtering).
+  const cascade = useMemo(() => {
+    const rows = facets ?? [];
+    const passes = (
+      f: (typeof rows)[number],
+      s: string | 'all',
+      y: number | 'all',
+      t: number | 'all',
+    ) =>
+      (s === 'all' || f.site === s) &&
+      (y === 'all' || f.year === y) &&
+      (t === 'all' || f.turtle_id === t);
+
+    // Site options honor the current year + turtle selection.
+    const siteCounts = new Map<string, number>();
+    for (const f of rows) {
+      if (f.site && passes(f, 'all', yearFilter, turtleFilter)) {
+        siteCounts.set(f.site, (siteCounts.get(f.site) ?? 0) + 1);
+      }
+    }
+    const siteOptions = [...siteCounts.entries()]
+      .map(([value, count]) => ({ value, label: siteLabel(value), count }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    // Year options honor the current site + turtle selection.
+    const yearCounts = new Map<number, number>();
+    for (const f of rows) {
+      if (f.year != null && passes(f, siteFilter, 'all', turtleFilter)) {
+        yearCounts.set(f.year, (yearCounts.get(f.year) ?? 0) + 1);
+      }
+    }
+    const yearOptions = [...yearCounts.entries()]
+      .map(([value, count]) => ({ value, count }))
+      .sort((a, b) => b.value - a.value); // newest first
+
+    // Turtle options honor the current site + year selection.
+    const turtleMap = new Map<number, { id: number; label: string; count: number }>();
+    for (const f of rows) {
+      if (!passes(f, siteFilter, yearFilter, 'all')) continue;
+      const existing = turtleMap.get(f.turtle_id);
       if (existing) {
         existing.count += 1;
       } else {
-        const label = loc.turtle_name
-          ? `${loc.turtle_external_id} · ${loc.turtle_name}`
-          : loc.turtle_external_id;
-        byTurtle[loc.turtle_id] = { id: loc.turtle_id, label, site: loc.site, count: 1 };
+        const label = f.turtle_name
+          ? `${f.turtle_external_id} · ${f.turtle_name}`
+          : f.turtle_external_id;
+        turtleMap.set(f.turtle_id, { id: f.turtle_id, label, count: 1 });
       }
     }
-    return Object.values(byTurtle).sort((a, b) => a.label.localeCompare(b.label));
-  }, [locations]);
+    const turtleOptions = [...turtleMap.values()].sort((a, b) => a.label.localeCompare(b.label));
+
+    return { siteOptions, yearOptions, turtleOptions };
+  }, [facets, siteFilter, yearFilter, turtleFilter]);
+
+  // Cascading resolution: the dropdown option lists already stop the user from
+  // *picking* an invalid value, but changing one filter can strand a value
+  // already selected in another (e.g. switching site away from the only site a
+  // chosen year exists in). On every change we keep the just-changed
+  // ('pinned') filter and reset any other filter whose value no longer has a
+  // matching encounter. Resets only broaden the selection, so the loop settles.
+  const applyCascade = (
+    site: string | 'all',
+    year: number | 'all',
+    turtle: number | 'all',
+    pinned: 'site' | 'year' | 'turtle',
+  ) => {
+    const rows = facets ?? [];
+    const match = (s: string | 'all', y: number | 'all', t: number | 'all') =>
+      rows.some(
+        (f) =>
+          (s === 'all' || f.site === s) &&
+          (y === 'all' || f.year === y) &&
+          (t === 'all' || f.turtle_id === t),
+      );
+    let changed = true;
+    while (changed) {
+      changed = false;
+      if (pinned !== 'site' && site !== 'all' && !match(site, year, turtle)) { site = 'all'; changed = true; }
+      if (pinned !== 'year' && year !== 'all' && !match(site, year, turtle)) { year = 'all'; changed = true; }
+      if (pinned !== 'turtle' && turtle !== 'all' && !match(site, year, turtle)) { turtle = 'all'; changed = true; }
+    }
+    setSiteFilter(site);
+    setYearFilter(year);
+    setTurtleFilter(turtle);
+  };
+
+  const changeSite = (v: string | 'all') => applyCascade(v, yearFilter, turtleFilter, 'site');
+  const changeYear = (v: number | 'all') => applyCascade(siteFilter, v, turtleFilter, 'year');
+  const changeTurtle = (v: number | 'all') => applyCascade(siteFilter, yearFilter, v, 'turtle');
+
+  const anyFilterActive = siteFilter !== 'all' || yearFilter !== 'all' || turtleFilter !== 'all';
+  const clearAllFilters = () => {
+    setSiteFilter('all');
+    setYearFilter('all');
+    setTurtleFilter('all');
+  };
 
   const items = paged?.items ?? [];
   const total = paged?.total ?? 0;
@@ -95,7 +195,7 @@ export default function Encounters() {
         </Link>
 
         <div className="flex flex-col gap-1">
-          <span style={META_LABEL}>All sites</span>
+          <span style={META_LABEL}>{siteFilter === 'all' ? 'All sites' : siteLabel(siteFilter)}</span>
           <h1
             style={{
               fontFamily: 'var(--font-heading)',
@@ -111,6 +211,8 @@ export default function Encounters() {
 
         <EncountersMap
           locations={locations}
+          siteFilter={siteFilter}
+          yearFilter={yearFilter}
           turtleFilter={turtleFilter}
           encounterFilter={selectedEncounterId}
           sectionLabelStyle={SECTION_LABEL}
@@ -125,11 +227,19 @@ export default function Encounters() {
           }}
         />
 
-        {/* Turtle filter */}
-        <TurtleFilterBar
-          options={turtleOptions}
-          value={turtleFilter}
-          onChange={setTurtleFilter}
+        {/* Site / Year / Turtle filters */}
+        <FiltersBar
+          siteOptions={cascade.siteOptions}
+          yearOptions={cascade.yearOptions}
+          turtleOptions={cascade.turtleOptions}
+          site={siteFilter}
+          year={yearFilter}
+          turtle={turtleFilter}
+          onSite={changeSite}
+          onYear={changeYear}
+          onTurtle={changeTurtle}
+          anyActive={anyFilterActive}
+          onClearAll={clearAllFilters}
         />
 
         {/* Encounter list */}
@@ -245,50 +355,98 @@ function Pagination({
   );
 }
 
-function TurtleFilterBar({
-  options, value, onChange,
-}: {
-  options: Array<{ id: number; label: string; count: number; site: string | null }>;
-  value: number | 'all';
-  onChange: (v: number | 'all') => void;
-}) {
-  const active = value !== 'all';
+function filterSelectStyle(active: boolean, minWidth: string): CSSProperties {
+  return {
+    padding: '0.55rem 2rem 0.55rem 0.875rem',
+    fontFamily: 'var(--font-body)',
+    fontSize: '0.85rem',
+    color: 'var(--color-text-primary)',
+    backgroundColor: active ? '#fffbe6' : 'var(--color-bg)',
+    border: `1px solid ${active ? '#d4a017' : 'var(--color-border-input)'}`,
+    outline: 'none',
+    appearance: 'none',
+    minWidth,
+    backgroundImage:
+      "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 0.75rem center',
+  };
+}
 
+function FiltersBar({
+  siteOptions, yearOptions, turtleOptions,
+  site, year, turtle,
+  onSite, onYear, onTurtle,
+  anyActive, onClearAll,
+}: {
+  siteOptions: Array<{ value: string; label: string; count: number }>;
+  yearOptions: Array<{ value: number; count: number }>;
+  turtleOptions: Array<{ id: number; label: string; count: number }>;
+  site: string | 'all';
+  year: number | 'all';
+  turtle: number | 'all';
+  onSite: (v: string | 'all') => void;
+  onYear: (v: number | 'all') => void;
+  onTurtle: (v: number | 'all') => void;
+  anyActive: boolean;
+  onClearAll: () => void;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      <span style={SECTION_LABEL}>Filter by turtle</span>
-      <div className="flex items-stretch gap-2">
+      <span style={SECTION_LABEL}>Filter</span>
+      <div className="flex items-stretch gap-2 flex-wrap">
+        {/* Site */}
         <select
-          value={value === 'all' ? 'all' : String(value)}
-          onChange={(e) => onChange(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-          disabled={options.length === 0}
-          style={{
-            padding: '0.55rem 2rem 0.55rem 0.875rem',
-            fontFamily: 'var(--font-body)',
-            fontSize: '0.85rem',
-            color: 'var(--color-text-primary)',
-            backgroundColor: active ? '#fffbe6' : 'var(--color-bg)',
-            border: `1px solid ${active ? '#d4a017' : 'var(--color-border-input)'}`,
-            outline: 'none',
-            appearance: 'none',
-            minWidth: '18rem',
-            backgroundImage:
-              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")",
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 0.75rem center',
-          }}
+          aria-label="Filter by site"
+          value={site}
+          onChange={(e) => onSite(e.target.value === 'all' ? 'all' : e.target.value)}
+          disabled={siteOptions.length === 0}
+          style={filterSelectStyle(site !== 'all', '9rem')}
         >
-          <option value="all">All turtles ({options.length})</option>
-          {options.map((t) => (
+          <option value="all">All sites</option>
+          {siteOptions.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label} ({s.count})
+            </option>
+          ))}
+        </select>
+
+        {/* Year */}
+        <select
+          aria-label="Filter by year"
+          value={year === 'all' ? 'all' : String(year)}
+          onChange={(e) => onYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          disabled={yearOptions.length === 0}
+          style={filterSelectStyle(year !== 'all', '8rem')}
+        >
+          <option value="all">All years</option>
+          {yearOptions.map((y) => (
+            <option key={y.value} value={String(y.value)}>
+              {y.value} ({y.count})
+            </option>
+          ))}
+        </select>
+
+        {/* Turtle */}
+        <select
+          aria-label="Filter by turtle"
+          value={turtle === 'all' ? 'all' : String(turtle)}
+          onChange={(e) => onTurtle(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          disabled={turtleOptions.length === 0}
+          style={filterSelectStyle(turtle !== 'all', '16rem')}
+        >
+          <option value="all">All turtles ({turtleOptions.length})</option>
+          {turtleOptions.map((t) => (
             <option key={t.id} value={String(t.id)}>
               {t.label} ({t.count})
             </option>
           ))}
         </select>
-        {active && (
+
+        {anyActive && (
           <button
             type="button"
-            onClick={() => onChange('all')}
+            onClick={onClearAll}
             style={{
               fontFamily: 'var(--font-body)',
               fontSize: '0.7rem',
@@ -308,7 +466,7 @@ function TurtleFilterBar({
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-btn-primary-bg)')}
           >
             <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>×</span>
-            Clear filter
+            Clear filters
           </button>
         )}
       </div>
@@ -317,10 +475,12 @@ function TurtleFilterBar({
 }
 
 function EncountersMap({
-  locations, turtleFilter, encounterFilter, sectionLabelStyle,
+  locations, siteFilter, yearFilter, turtleFilter, encounterFilter, sectionLabelStyle,
   onClearEncounterFilter, onPickEncounter,
 }: {
   locations: CaptureLocation[] | undefined;
+  siteFilter: string | 'all';
+  yearFilter: number | 'all';
   turtleFilter: number | 'all';
   encounterFilter: number | null;
   sectionLabelStyle: CSSProperties;
@@ -354,10 +514,17 @@ function EncountersMap({
     if (!locations) return undefined;
     return locations.filter((l) => {
       if (turtleFilter !== 'all' && l.turtle_id !== turtleFilter) return false;
+      if (siteFilter !== 'all' && l.site !== siteFilter) return false;
+      // Year on the map keys off captured_date (the list uses encounter_date);
+      // for a single encounter these fall on the same day, so results match.
+      if (yearFilter !== 'all') {
+        const capYear = l.captured_date ? Number(l.captured_date.slice(0, 4)) : null;
+        if (capYear !== yearFilter) return false;
+      }
       if (encounterFilter !== null && l.encounter_id !== encounterFilter) return false;
       return true;
     });
-  }, [locations, turtleFilter, encounterFilter]);
+  }, [locations, siteFilter, yearFilter, turtleFilter, encounterFilter]);
 
   useEffect(() => {
     const map = mapRef.current;
