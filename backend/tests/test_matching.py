@@ -80,9 +80,10 @@ def test_crop_variants_match_turtle_vision():
 
 def test_bands():
     assert matcher.band_of(2.0) == "match"
-    assert matcher.band_of(1.7) == "check"
-    assert matcher.band_of(1.49) == "possibly_new"
-    assert matcher.band_of(1.7, n_photos=3) == "possibly_new"  # stricter with several photos
+    assert matcher.band_of(1.3) == "check"
+    assert matcher.band_of(1.19) == "possibly_new"
+    assert matcher.band_of(1.3, n_photos=3) == "possibly_new"  # stricter with several photos
+    assert matcher.band_of(1.7, n_photos=3) == "check"
     assert matcher.band_of(2.5, n_photos=3) == "match"
 
 
@@ -93,6 +94,21 @@ def test_sift_scores_same_shell_above_different_shell():
     # Synthetic shells share blob shapes and the oval outline, so different ones
     # score higher than real different turtles (< 2); the same shell is still far above.
     assert matcher.sift_score(a, same) > 4 * max(matcher.sift_score(a, o) for o in others)
+
+
+def test_mutual_check_counts_each_pair_once():
+    # a[0] and a[1] both have b[0] as nearest neighbour; only a[0] is b[0]'s nearest back
+    b = np.eye(3, 128, dtype=np.float32)
+    a = np.zeros((2, 128), np.float32)
+    a[0, 0] = 1
+    a[1, :2] = [0.9, 0.1]
+    a[1] /= np.linalg.norm(a[1])
+    assert matcher.mutual_score((2, a), (3, b)) == pytest.approx(1 / np.sqrt(6) * 100)
+
+
+def test_root_sift_is_unit_length():
+    n, d = matcher.root_sift(matcher.sift_features(shell(1)))
+    assert np.allclose(np.linalg.norm(d, axis=1), 1, atol=1e-3)
 
 
 def test_descriptor_round_trip():

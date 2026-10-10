@@ -13,6 +13,16 @@
 
 Spot score (SIFT) separates known from new turtles (AUC 0.88). A cut-off near 1.5 catches 92% of new turtles while naming only 3% of known turtles wrongly.
 
+**Update — improved SIFT scoring** ([turtle-vision `analysis/SIFT_STUDY.md`](https://github.com/boxturtleproject/turtle-vision/blob/main/analysis/SIFT_STUDY.md)). Counting only *mutual* matches of *RootSIFT* descriptors (ratio 0.8, score normalised by √(keypoints × keypoints)) on the same photos:
+
+| | right first time | right turtle in top 5 |
+|---|---:|---:|
+| SIFT + embeddings, improved SIFT | **96.0%** | **98.3%** |
+| SIFT only, improved | 90.9% | 95.5% |
+| Different-day reference test (534), SIFT + embeddings | 85.2% → **88.6%** | 92.5% → 94.6% |
+
+Same keypoints and speed; the stored uint8 descriptors are reused (RootSIFT is computed at index build). Known-vs-new separation rises to AUC 0.95, and the spot-score bands below were re-set for the new scale. With box-turtle-id's own pipeline on 30 field photos and real Gemini: 29/30 right first time (was 27/30), 30/30 in the top 5.
+
 ## How today's identify differs
 
 `backend/app/api/submissions.py`:
@@ -29,7 +39,7 @@ Spot score (SIFT) separates known from new turtles (AUC 0.88). A cut-off near 1.
 2. **Crops:**
    - shell crop: the box plus a 5% margin
    - tight crop: the central 1/√2 of the box
-3. **SIFT** on the shell crop at 250px wide, using the existing `SiftService`, scored against **every** reference shell crop.
+3. **SIFT** on the shell crop at 250px wide, scored against **every** reference shell crop: RootSIFT descriptors, a pair counts only when each is the other's nearest neighbour and both pass the ratio test at 0.8; score = mutual matches / √(keypoints in both) × 100.
 4. **Embeddings:** `gemini-embedding-2-preview` (3072 dimensions) of the shell crop and the tight crop.
 5. **Embedding similarity:** for each crop variant, project with PCA (128) then LDA fitted on the reference captures, using `turtle_id` as the label. The similarity is the average of the two variants' cosine similarities.
 6. **Fuse per turtle:** `log(1 + best SIFT score) + best embedding similarity`.
@@ -38,16 +48,16 @@ Spot score (SIFT) separates known from new turtles (AUC 0.88). A cut-off near 1.
 ### Encounter (several photos)
 - Add up each turtle's fused score across the submitted photos.
 - Spot score = the best SIFT score for that turtle across the photos.
-- With 2+ photos, use a slightly stricter new-turtle cut-off (2.0) on that best photo, because more photos give a new turtle more chances to match one known turtle by luck.
+- With 2+ photos, "check" starts at 1.5 instead of 1.2, because more photos give a new turtle more chances to match one known turtle by luck (the best of two new-turtle photos reaches 1.2 7% of the time vs 3.5% for one; none reached 1.5).
 
 ### Result bands
 Shown on the possible-match page:
 
 | spot score | band | meaning |
 |---|---|---|
-| ≥ 2 | **Match** | about 95% right in the field test; show the turtle |
-| 1.5–2 | **Check** | "Is this Cruella?", with the top 5 to compare |
-| < 1.5 | **Possibly new** | still show the top 5 (97% top-5 for known turtles), then the new-turtle flow |
+| ≥ 2 | **Match** | field test: 127 known turtles, all named right; no new turtles |
+| 1.2–2 (1.5–2 with 2+ photos) | **Check** | "Is this Cruella?", with the top 5 to compare; field: 22 known (all right), 5 new |
+| < 1.2 | **Possibly new** | catches 96.5% of new turtles; still show the top 5, then the new-turtle flow |
 
 ## Changes
 
@@ -112,6 +122,6 @@ Resume-safe. Roughly 1,000–1,500 captures: about 15 minutes, under $1.
 ## Risks and open questions
 - **Gemini dependency:** a self-hosted turtle detector (for example a YOLO model trained on the ~1k Gemini boxes from the backfill) could replace the box call later.
 - **LDA needs labelled references:** turtles with one capture contribute little. Coverage drives accuracy: Glyph, Emoji, Jazzy and Lotus have few references and did worst.
-- **Data cleanup to do first:** byte-identical photos filed under different dates (66 sets); Cruella #719 is the same photo as Jigsaw #801; D.E.P./Spikey and Flower/Sunflower may be duplicate identities.
+- **Data cleanup to do first:** byte-identical photos filed under different dates (66 sets); Cruella #719 is the same photo as Jigsaw #801; D.E.P./Spikey and Flower/Sunflower may be duplicate identities. With the improved SIFT, 34 *different* Jigsaw and Cruella photos match each other strongly (and 9 Flower/Sunflower), so Jigsaw and Cruella are very likely the same turtle.
 - **Site scoping:** today's identify filters to the submitted site. Keep that, since references are per site.
 - **New turtles:** 45% of the field-test photos were new individuals. Batch-adding the verified ones (turtle-vision `analysis/new_turtles.py` groups them) is the fastest coverage win.

@@ -1,14 +1,16 @@
 # ABOUTME: Fused matcher: SIFT on the Gemini shell crop + image embeddings (PCA->LDA),
 # ABOUTME: combined per turtle, added up across an encounter's photos, with spot-score bands.
 """
-Ported from turtle-vision (matching.py, sift_match.py, app.py). Field test on
-364 hand-verified photos: right turtle first 90% of the time (97% in the top
-5) vs 80% for SIFT alone; encounters with 2+ photos 31/31.
+Ported from turtle-vision (matching.py, sift_match.py, app.py). On the 176
+hand-verified known turtles of the October field test: right turtle first 96%
+of the time (98% in the top 5); encounters with 2+ photos 31/31. See
+turtle-vision analysis/SIFT_STUDY.md for the SIFT scoring.
 
 Per photo:
   1. Gemini shell box -> "crop" (box + 5%) and "tight" (central 1/sqrt(2)) crops
-  2. SIFT on the crop at 250px, scored against every reference crop
-     (score = good matches / fewest keypoints * 100, ratio test 0.67)
+  2. SIFT on the crop at 250px, scored against every reference crop: RootSIFT
+     descriptors, mutual nearest neighbours passing the ratio test at 0.8,
+     score = mutual matches / sqrt(keypoints in both) * 100
   3. Embeddings of both crops, projected with PCA(128) -> LDA (fit on the
      reference captures' turtle ids); cosine similarity averaged over crops
   4. Per turtle: log(1 + best SIFT score) + best embedding similarity
@@ -33,19 +35,21 @@ from app.services import gemini, shellcrop
 logger = logging.getLogger(__name__)
 
 SIFT_WIDTH = 250
-SIFT_RATIO = 0.67
+SIFT_RATIO = 0.8
 VARIANTS = ("crop", "tight")
 PCA_DIM = 128
 
-# Spot-score bands, from the field test (spot score of the top turtle):
-#   >= 2.0 "match"         about 95% right
-#   1.5-2  "check"         probably this turtle; confirm against the top 5
-#   < 1.5  "possibly_new"  catches 92% of new turtles
-# With 2+ photos the best photo is used and the "check" zone is dropped
-# (new-turtle cut-off 2.0), since more photos give a new turtle more chances
-# to match a known one by luck.
+# Spot-score bands, from the field test (spot score of the top turtle; 176 known,
+# 142 new turtles):
+#   >= 2.0 "match"         127 known, all named right; no new turtles
+#   1.2-2  "check"         22 known (all right) and 5 new; confirm against the top 5
+#   < 1.2  "possibly_new"  catches 96.5% of new turtles
+# With 2+ photos the best photo is used and "check" starts at 1.5, since more
+# photos give a new turtle more chances to reach 1.2 by luck (7% for the best
+# of two vs 3.5% for one; none reached 1.5).
 BAND_MATCH = 2.0
-BAND_CHECK = 1.5
+BAND_CHECK = 1.2
+BAND_CHECK_MULTI = 1.5
 CONFIDENCE = {"match": "high", "check": "medium", "possibly_new": "low"}
 
 _pool = ThreadPoolExecutor(8)
@@ -54,7 +58,7 @@ _pool = ThreadPoolExecutor(8)
 def band_of(spot: float, n_photos: int = 1) -> str:
     if spot >= BAND_MATCH:
         return "match"
-    if spot >= BAND_CHECK and n_photos == 1:
+    if spot >= (BAND_CHECK if n_photos == 1 else BAND_CHECK_MULTI):
         return "check"
     return "possibly_new"
 
@@ -75,22 +79,48 @@ def sift_features(img: Image.Image) -> tuple[int, np.ndarray | None]:
     return (len(kp), desc.astype(np.uint8)) if desc is not None else (0, None)
 
 
-def _good(bf, a, b) -> int:
+def root_sift(f):
+    """(keypoint count, RootSIFT float32 descriptors) from sift_features() output."""
+    n, desc = f
+    if desc is None:
+        return n, None
+    d = desc.astype(np.float32)
+    return n, np.sqrt(d / (d.sum(1, keepdims=True) + 1e-7))
+
+
+def _nearest(bf, a, b) -> np.ndarray:
+    """Per row of a: (index of nearest row of b, distance ratio to the second nearest)."""
+    out = np.full((len(a), 2), [-1, 1.0])
+    for m in bf.knnMatch(a, b, k=2):
+        if len(m) == 2:
+            out[m[0].queryIdx] = m[0].trainIdx, m[0].distance / max(m[1].distance, 1e-9)
+    return out
+
+
+def mutual_score(pa, pb) -> float:
+    """Spot score of two root_sift() features: mutual ratio-test matches / sqrt(n_a * n_b) * 100.
+
+    A pair counts only when each descriptor is the other's nearest neighbour and
+    both pass the ratio test; the mutual check is what makes the looser ratio safe.
+    """
+    a, b = pa[1], pb[1]
     if a is None or b is None or len(a) < 2 or len(b) < 2:
-        return 0
-    return sum(
-        1
-        for m in bf.knnMatch(a, b, k=2)
-        if len(m) == 2 and m[0].distance < SIFT_RATIO * m[1].distance
+        return 0.0
+    bf = cv2.BFMatcher(cv2.NORM_L2)  # one per call: matchers aren't shared across threads
+    ab, ba = _nearest(bf, a, b), _nearest(bf, b, a)
+    j = ab[:, 0].astype(int)
+    back = ba[j]
+    good = (
+        (j >= 0)
+        & (back[:, 0] == np.arange(len(a)))
+        & (np.maximum(ab[:, 1], back[:, 1]) < SIFT_RATIO)
     )
+    return float(good.sum() / np.sqrt(pa[0] * pb[0]) * 100)
 
 
 def sift_score(fa, fb) -> float:
-    a = fa[1].astype(np.float32) if fa[1] is not None else None
-    b = fb[1].astype(np.float32) if fb[1] is not None else None
-    bf = cv2.BFMatcher(cv2.NORM_L2)  # one per call: matchers aren't shared across threads
-    fewest = min(fa[0], fb[0])
-    return max(_good(bf, a, b), _good(bf, b, a)) / fewest * 100 if fewest else 0.0
+    """Spot score of two sift_features() results."""
+    return mutual_score(root_sift(fa), root_sift(fb))
 
 
 def pack_descriptors(desc: np.ndarray | None) -> bytes | None:
@@ -182,8 +212,8 @@ class MatchIndex:
         self.turtle_ids = np.array([r.turtle_id for r in keep])
         self.sites = np.array([r.site or "" for r in keep])
         self.thumbs = {r.id: r.thumbnail_url or r.display_url for r in keep}
-        self.sift = [
-            (feats[c].keypoint_count, unpack_descriptors(feats[c].descriptors))
+        self.sift = [  # RootSIFT, prepared once
+            root_sift((feats[c].keypoint_count, unpack_descriptors(feats[c].descriptors)))
             for c in self.capture_ids
         ]
         self.classes = sorted(set(self.turtle_ids.tolist()))
@@ -210,7 +240,8 @@ class MatchIndex:
         """Per reference capture: SIFT scores and embedding similarity (average over crops)."""
         n = len(self.capture_ids)
         chunks = [range(i, min(n, i + 64)) for i in range(0, n, 64)]
-        parts = _pool.map(lambda ch: [sift_score(ev.sift, self.sift[j]) for j in ch], chunks)
+        q = root_sift(ev.sift)
+        parts = _pool.map(lambda ch: [mutual_score(q, self.sift[j]) for j in ch], chunks)
         s_sift = np.array([x for part in parts for x in part])
         s_emb = np.mean(
             [self.P[v] @ self.project[v](ev.embeddings[v][None, :])[0] for v in VARIANTS], axis=0
