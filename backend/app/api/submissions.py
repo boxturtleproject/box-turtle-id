@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.database import get_db
-from app.models import Capture, Encounter, Submission, Turtle
+from app.database import SessionLocal, get_db
+from app.models import Capture, Encounter, MatchShadowLog, Submission, Turtle
 from app.schemas.submission import (
     ConfirmRequest,
     ConfirmResponse,
@@ -23,7 +23,7 @@ from app.schemas.submission import (
     NewTurtleResponse,
     SubmissionCandidate,
 )
-from app.services import CropperService, ImageService, SiftService
+from app.services import CropperService, ImageService, SiftService, match_features, matcher
 from app.services.derivatives import DerivativesService
 from app.services.sift import SiftFeatures
 from app.services.storage import S3Storage, get_storage
@@ -222,6 +222,13 @@ async def identify(
     db.add(submission)
     db.commit()
 
+    photo_paths = [p for p in (top_path, left_path, right_path) if p]
+    if settings.matcher == "fused":
+        try:
+            return _identify_fused(db, submission_id, site, photo_paths, start_time)
+        except Exception as e:  # never strand a field user: fall back to the SIFT matcher
+            logger.warning(f"fused identify failed, falling back to SIFT: {e}")
+
     # Extract SIFT features from each submitted image, tagging with its
     # image_type so the matcher can compare against the same DB type.
     # query_entries: list of (image_type, query_image_index, query_image, features)
@@ -333,12 +340,84 @@ async def identify(
 
     processing_time_ms = int((time.time() - start_time) * 1000)
 
+    if settings.matcher == "shadow" and photo_paths:
+        sift_top = [[c.turtle_id, c.score] for c in candidates[:5]]
+        threading.Thread(target=_shadow_fused, args=(submission_id, site, photo_paths, sift_top),
+                         daemon=True).start()
+
     return IdentifyResponse(
         candidates=candidates,
         total_compared=len(captures),
         processing_time_ms=processing_time_ms,
         submission_id=submission_id,
     )
+
+
+def _open_photos(paths: list[str]):
+    from PIL import Image, ImageOps
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    return [ImageOps.exif_transpose(Image.open(p)).convert("RGB") for p in paths]
+
+
+def _identify_fused(
+    db: Session, submission_id: str, site: str, paths: list[str], start_time: float
+):
+    """SIFT on the shell crop + embeddings, added up across the submitted photos."""
+    ranked, band, n_photos, _ = matcher.identify(db, _open_photos(paths), site)
+    index = matcher.get_index(db)
+    candidates = []
+    for r in ranked[:10]:
+        turtle = db.query(Turtle).filter(Turtle.id == r.turtle_id).first()
+        b = matcher.band_of(r.spot, n_photos)
+        candidates.append(SubmissionCandidate(
+            turtle_id=r.turtle_id,
+            turtle_nickname=(turtle.name or turtle.external_id) if turtle else None,
+            score=round(r.spot, 1),
+            confidence=matcher.CONFIDENCE[b],
+            visualization_url=None,
+            thumbnail_url=index.thumbs.get(r.best_capture_id),
+            spot_score=round(r.spot, 2),
+            fused_score=round(r.fused, 3),
+            band=b,
+        ))
+    return IdentifyResponse(
+        candidates=candidates,
+        total_compared=len(index),
+        processing_time_ms=int((time.time() - start_time) * 1000),
+        submission_id=submission_id,
+        matcher="fused",
+        band=band,
+    )
+
+
+def _shadow_fused(submission_id: str, site: str, paths: list[str], sift_top: list):
+    """Shadow mode: run the fused matcher after answering with SIFT, and log both."""
+    with SessionLocal() as db:
+        row = MatchShadowLog(submission_id=submission_id, site=site, n_photos=len(paths),
+                             sift_top=json.dumps(sift_top))
+        try:
+            ranked, band, _, ms = matcher.identify(db, _open_photos(paths), site)
+            row.fused_top, row.fused_band, row.fused_ms = matcher.summary_json(ranked), band, ms
+        except Exception as e:
+            row.error = str(e)[:1000]
+        db.add(row)
+        db.commit()
+
+
+def _refresh_match_features(encounter_id: int):
+    """Compute fused-matcher features for an encounter's new captures, then refit the index."""
+    if settings.matcher == "sift":
+        return
+    with SessionLocal() as db:
+        ids = [c for (c,) in db.query(Capture.id).filter(Capture.encounter_id == encounter_id,
+                                                         Capture.image_type != "site_view").all()]
+        for cid in ids:
+            try:
+                match_features.compute_for_capture(db, db.get(Capture, cid))
+            except Exception as e:
+                logger.warning(f"match features failed for capture {cid}: {e}")
+    matcher.invalidate()
 
 
 @router.post("/submissions/{submission_id}/confirm", response_model=ConfirmResponse)
@@ -392,6 +471,7 @@ async def confirm_submission(
 
     submission.status = "confirmed"
     db.commit()
+    threading.Thread(target=_refresh_match_features, args=(encounter.id,), daemon=True).start()
 
     return ConfirmResponse(success=True, encounter_id=encounter.id)
 
@@ -467,6 +547,7 @@ async def new_turtle_from_submission(
 
     submission.status = "confirmed"
     db.commit()
+    threading.Thread(target=_refresh_match_features, args=(encounter.id,), daemon=True).start()
 
     return NewTurtleResponse(success=True, turtle_id=turtle.id)
 
