@@ -91,7 +91,8 @@ Resume-safe. Roughly 1,000–1,500 captures: about 15 minutes, under $1.
   - photos run in parallel through the per-photo pipeline (box → SIFT and embeddings)
   - compare against every capture at the site, any view
   - combine across top/left/right
-  - response adds `spot_score`, `band`, per-candidate `fused_score`, and the reference thumbnails for the top 5
+  - response adds `spot_score`, `band`, `likelihood`, per-candidate `fused_score`, and the reference thumbnails for the top 5
+  - `likelihood` = % of top picks that were right at that spot score on the field photos (`matcher.LIKELIHOOD`): under 0.8 ~5%, 0.8–1 ~15%, 1–1.2 ~30%, 1.2–1.5 ~45% (~30% with 2+ photos), 1.5–2 ~95%, 2–3 ~97%, 3+ ~98% (cap). Show it beside the spot score, e.g. "Match: Cruella · spot 3.4 · ~98% likely"; refit the low rows from confirmed submissions
 - `confirm` / `new-turtle`: compute and store box, crops, SIFT and embeddings for the new captures, then trigger a matcher refit.
 - **Feature flag** `MATCHER=sift|fused` (default `sift` until validated).
 - **Shadow mode:** compute both and log them, so production photos can be compared before switching.

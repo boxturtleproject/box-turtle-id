@@ -380,6 +380,7 @@ def _identify_fused(
             spot_score=round(r.spot, 2),
             fused_score=round(r.fused, 3),
             band=b,
+            likelihood=matcher.likelihood_of(r.spot, n_photos),
         ))
     return IdentifyResponse(
         candidates=candidates,
@@ -388,6 +389,7 @@ def _identify_fused(
         submission_id=submission_id,
         matcher="fused",
         band=band,
+        likelihood=candidates[0].likelihood if candidates else None,
     )
 
 

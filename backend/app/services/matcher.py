@@ -52,6 +52,14 @@ BAND_CHECK = 1.2
 BAND_CHECK_MULTI = 1.5
 CONFIDENCE = {"match": "high", "check": "medium", "possibly_new": "low"}
 
+# Spot score as "% likely": how often the top pick was right at that score on the
+# field photos (checked on the reference test), as (lowest score, %), rounded and
+# capped at 98%. A table, not a fitted curve: it jumps from ~45% to ~95% at 1.5.
+# The low rows assume about as many new turtles as the field test (45%); refit
+# them from confirmed submissions.
+LIKELIHOOD = [(3.0, 98), (2.0, 97), (1.5, 95), (1.2, 45), (1.0, 30), (0.8, 15), (0.0, 5)]
+LIKELIHOOD_CHECK_MULTI = 30  # 1.2-1.5 with 2+ photos (that is possibly_new there)
+
 _pool = ThreadPoolExecutor(8)
 
 
@@ -61,6 +69,13 @@ def band_of(spot: float, n_photos: int = 1) -> str:
     if spot >= (BAND_CHECK if n_photos == 1 else BAND_CHECK_MULTI):
         return "check"
     return "possibly_new"
+
+
+def likelihood_of(spot: float, n_photos: int = 1) -> int:
+    """Rough % chance that the turtle with this spot score is the right one."""
+    if n_photos > 1 and BAND_CHECK <= spot < BAND_CHECK_MULTI:
+        return LIKELIHOOD_CHECK_MULTI
+    return next(p for lo, p in LIKELIHOOD if spot >= lo)
 
 
 # ---------------------------------------------------------------- SIFT

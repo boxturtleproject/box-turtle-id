@@ -87,6 +87,20 @@ def test_bands():
     assert matcher.band_of(2.5, n_photos=3) == "match"
 
 
+def test_likelihood():
+    assert matcher.likelihood_of(0.3) == 5
+    assert matcher.likelihood_of(0.9) == 15
+    assert matcher.likelihood_of(1.3) == 45
+    assert matcher.likelihood_of(1.3, n_photos=2) == 30  # several photos: weaker evidence
+    assert matcher.likelihood_of(1.7, n_photos=2) == 95
+    assert matcher.likelihood_of(2.0) == 97
+    assert matcher.likelihood_of(40) == 98  # capped
+    # each row's lowest score maps to that row, and higher scores never look less likely
+    rows = sorted(matcher.LIKELIHOOD)
+    assert [matcher.likelihood_of(lo) for lo, _ in rows] == [p for _, p in rows]
+    assert [p for _, p in rows] == sorted(p for _, p in rows)
+
+
 def test_sift_scores_same_shell_above_different_shell():
     a = matcher.sift_features(shell(1))
     same = matcher.sift_features(shell(1, shift=(10, -6), brightness=0.9))
@@ -162,6 +176,7 @@ def test_identify_endpoint_fused(client, references, monkeypatch, sample_image_b
     assert top["turtle_id"] == references[1]
     assert top["confidence"] == "high"
     assert top["spot_score"] >= 2
+    assert top["likelihood"] >= 97 and body["likelihood"] == top["likelihood"]
 
 
 def test_identify_falls_back_to_sift_when_index_empty(
