@@ -10,6 +10,11 @@ class SubmissionCandidate(BaseModel):
     confidence: str
     visualization_url: Optional[str]
     thumbnail_url: Optional[str]
+    # Fused matcher only (settings.matcher == "fused"); score is then the spot score.
+    spot_score: Optional[float] = None
+    fused_score: Optional[float] = None
+    band: Optional[str] = None  # "match" | "check" | "possibly_new"
+    likelihood: Optional[int] = None  # % likely this is the turtle, from spot_score
 
 
 class IdentifyResponse(BaseModel):
@@ -17,6 +22,9 @@ class IdentifyResponse(BaseModel):
     total_compared: int
     processing_time_ms: int
     submission_id: str
+    matcher: str = "sift"
+    band: Optional[str] = None  # band of the top candidate (fused matcher)
+    likelihood: Optional[int] = None  # % likely of the top candidate (fused matcher)
 
 
 class EncounterFormData(BaseModel):

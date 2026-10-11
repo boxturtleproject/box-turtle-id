@@ -46,6 +46,22 @@ class Settings(BaseSettings):
     airtable_surveys_table: str = "Surveys"
     airtable_plots_table: str = "Plots"
 
+    # Matching engine. "sift" = original SIFT-only identify; "fused" = SIFT on the
+    # Gemini shell crop + image embeddings (PCA->LDA), added up across photos;
+    # "shadow" = answer with SIFT, run fused in the background and log both.
+    matcher: str = "sift"
+
+    # Gemini (shell box + embeddings). Vertex AI when google_genai_use_vertexai,
+    # else gemini_api_key. Box model is served from the "global" Vertex location.
+    google_genai_use_vertexai: bool = False
+    google_cloud_project: Optional[str] = None
+    google_cloud_location: str = "us-central1"
+    gemini_api_key: Optional[str] = None
+    crop_model: str = "gemini-3.6-flash"
+    crop_location: str = "global"
+    embed_model: str = "gemini-embedding-2-preview"
+    embed_dim: int = 3072
+
     # App
     environment: str = "development"
 

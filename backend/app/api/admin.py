@@ -60,3 +60,90 @@ async def list_files():
         result["thumbnails"] = [f.name for f in thumbs_dir.iterdir() if f.is_file()]
 
     return result
+
+
+# ---------------------------------------------------------------- fused matcher
+
+@router.get("/admin/matching/status")
+async def matching_status():
+    """Readiness of the fused matcher: features computed, index size, mode."""
+    from app.database import SessionLocal
+    from app.models import Capture, CaptureMatchFeatures, Job, MatchShadowLog
+    from app.services import gemini, match_features
+
+    with SessionLocal() as db:
+        refs = (db.query(Capture)
+                .filter(Capture.turtle_id.isnot(None), Capture.image_type != "site_view")
+                .count())
+        pending = len(match_features.pending_capture_ids(db))
+        no_shell = (db.query(CaptureMatchFeatures)
+                    .filter(CaptureMatchFeatures.shell_found.is_(False))
+                    .count())
+        shadow = db.query(MatchShadowLog).count()
+        job = (db.query(Job).filter(Job.job_type == "match_backfill")
+               .order_by(Job.created_at.desc()).first())
+        return {
+            "matcher": settings.matcher,
+            "gemini_configured": gemini.configured(),
+            "reference_captures": refs,
+            "with_features": refs - pending,
+            "pending": pending,
+            "no_shell_found": no_shell,
+            "shadow_log_rows": shadow,
+            "last_backfill": None if job is None else {
+                "id": job.id, "status": job.status, "progress": job.progress,
+                "result": job.result_data, "error": job.error_message},
+        }
+
+
+@router.post("/admin/matching/backfill")
+async def matching_backfill():
+    """Compute shell box, crop SIFT and embeddings for every reference capture missing them.
+
+    Runs in a background thread; resumable (re-run to pick up anything that failed).
+    Track it with GET /api/admin/matching/status or /api/jobs/{id}.
+    """
+    import json
+    import threading
+    from datetime import datetime
+
+    from app.database import SessionLocal
+    from app.models import Job
+    from app.models.job import JobStatus
+    from app.services import gemini, match_features
+
+    if not gemini.configured():
+        raise HTTPException(status_code=400,
+                            detail="Gemini is not configured (see GOOGLE_* / GEMINI_API_KEY)")
+    with SessionLocal() as db:
+        running = (db.query(Job).filter(Job.job_type == "match_backfill",
+                                        Job.status == JobStatus.RUNNING.value).first())
+        if running:
+            return {"job_id": running.id, "status": "already running"}
+        job = Job(job_type="match_backfill", status=JobStatus.RUNNING.value)
+        db.add(job)
+        db.commit()
+        job_id = job.id
+
+    def progress(done, failed, total):
+        with SessionLocal() as db:
+            j = db.get(Job, job_id)
+            j.progress = int(100 * (done + failed) / max(total, 1))
+            db.commit()
+
+    def run():
+        with SessionLocal() as db:
+            j = db.get(Job, job_id)
+            try:
+                result = match_features.run_backfill(SessionLocal, progress)
+                j = db.get(Job, job_id)
+                j.status, j.progress = JobStatus.COMPLETED.value, 100
+                j.result_data = json.dumps(result)
+            except Exception as e:
+                j = db.get(Job, job_id)
+                j.status, j.error_message = JobStatus.FAILED.value, str(e)[:2000]
+            j.completed_at = datetime.now()
+            db.commit()
+
+    threading.Thread(target=run, daemon=True).start()
+    return {"job_id": job_id, "status": "started"}
